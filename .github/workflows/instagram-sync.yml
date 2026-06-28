@@ -1,0 +1,133 @@
+name: Sync Instagram Analytics
+
+# Runs every hour — completely free on public repos (unlimited GitHub Actions minutes)
+# Instagram data doesn't change faster than this anyway
+on:
+  schedule:
+    - cron: '0 * * * *'   # every hour, on the hour
+  workflow_dispatch:        # also triggerable manually from the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # needed to commit data files back to the repo
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch Instagram data & save
+        env:
+          IG_TOKEN:   ${{ secrets.IG_TOKEN }}
+          IG_USER_ID: '446641421869856'
+        run: |
+          python3 - << 'EOF'
+          import json, datetime, urllib.request, os, pathlib, sys
+
+          TOKEN   = os.environ['IG_TOKEN']
+          USER_ID = os.environ['IG_USER_ID']
+          BASE    = 'https://graph.facebook.com/v19.0'
+
+          def api_get(path, **params):
+              params['access_token'] = TOKEN
+              qs = '&'.join(f'{k}={v}' for k, v in params.items())
+              url = f'{BASE}{path}?{qs}'
+              try:
+                  with urllib.request.urlopen(url, timeout=15) as r:
+                      data = json.loads(r.read())
+                      if 'error' in data:
+                          print(f'  API error on {path}: {data["error"].get("message",data["error"])}', file=sys.stderr)
+                          return {}
+                      return data
+              except Exception as e:
+                  print(f'  HTTP error on {path}: {e}', file=sys.stderr)
+                  return {}
+
+          # ── Profile ──────────────────────────────────────────────────────────
+          profile = api_get(f'/{USER_ID}',
+                            fields='id,username,followers_count,media_count')
+          followers   = profile.get('followers_count', 0)
+          media_count = profile.get('media_count', 0)
+          username    = profile.get('username', '_juliettech')
+          print(f'@{username}: {followers:,} followers, {media_count} total posts')
+
+          # ── Recent media ─────────────────────────────────────────────────────
+          media_resp = api_get(
+              f'/{USER_ID}/media',
+              fields='id,caption,media_type,timestamp,like_count,comments_count,permalink',
+              limit=20
+          )
+
+          posts = []
+          for m in media_resp.get('data', []):
+              post = {
+                  'id':          m['id'],
+                  'date':        m.get('timestamp', '')[:10],
+                  'type':        m.get('media_type', ''),
+                  'caption':     (m.get('caption') or '')[:300],
+                  'likes':       m.get('like_count', 0),
+                  'comments':    m.get('comments_count', 0),
+                  'url':         m.get('permalink', ''),
+                  'impressions': 0,
+                  'reach':       0,
+                  'saves':       0,
+              }
+              # Insights (requires professional/creator account; silently skipped if unavailable)
+              ins = api_get(f'/{m["id"]}/insights', metric='impressions,reach,saved', period='lifetime')
+              for item in ins.get('data', []):
+                  key = 'saves' if item['name'] == 'saved' else item['name']
+                  val = item.get('value') or ((item.get('values') or [{}])[-1].get('value', 0))
+                  post[key] = val or 0
+              posts.append(post)
+              print(f'  {post["date"]} {post["type"]}: ❤ {post["likes"]}  💬 {post["comments"]}  👁 {post["impressions"]}')
+
+          now   = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+          today = datetime.date.today().isoformat()
+
+          full = {
+              'username':    username,
+              'followers':   followers,
+              'media_count': media_count,
+              'posts':       posts,
+              'fetched_at':  now,
+          }
+
+          # ── 1. data/latest.json  (dashboard reads this) ───────────────────
+          pathlib.Path('data').mkdir(exist_ok=True)
+          with open('data/latest.json', 'w') as f:
+              json.dump(full, f, indent=2)
+          print(f'✓ Wrote data/latest.json')
+
+          # ── 2. data/history.jsonl  (compact per-run log, tiny ~200 B/line) ─
+          summary = {
+              't':  now,
+              'f':  followers,
+              'mc': media_count,
+              'pc': len(posts),
+              'tl': max((p['likes']    for p in posts), default=0),
+              'tc': max((p['comments'] for p in posts), default=0),
+              'al': round(sum(p['likes'] for p in posts) / max(len(posts), 1), 1),
+          }
+          with open('data/history.jsonl', 'a') as f:
+              f.write(json.dumps(summary) + '\n')
+          print(f'✓ Appended to data/history.jsonl')
+
+          # ── 3. data/daily/YYYY-MM-DD.json  (full daily snapshot archive) ───
+          daily_dir = pathlib.Path('data/daily')
+          daily_dir.mkdir(parents=True, exist_ok=True)
+          with open(daily_dir / f'{today}.json', 'w') as f:
+              json.dump(full, f, indent=2)
+          print(f'✓ Wrote data/daily/{today}.json')
+
+          print(f'\nDone: {followers:,} followers · {len(posts)} posts fetched')
+          EOF
+
+      - name: Commit & push data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --staged --quiet && { echo "No changes to commit"; exit 0; }
+          git commit -m "sync: instagram $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push
