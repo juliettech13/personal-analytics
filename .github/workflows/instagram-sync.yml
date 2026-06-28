@@ -137,12 +137,21 @@ jobs:
 
               # Base insights (all media types, v22+ compatible)
               ins = api_get(f'/{m["id"]}/insights',
-                            metric='reach,saved,shares,total_interactions,profile_visits,follows',
+                            metric='reach,saved,shares,total_interactions',
                             period='lifetime')
               for item in ins.get('data', []):
                   key = 'saves' if item['name'] == 'saved' else item['name']
                   val = item.get('value') or ((item.get('values') or [{}])[-1].get('value', 0))
                   post[key] = val or 0
+
+              # profile_visits + follows — only supported for some media types (optional)
+              pv_ins = api_get(f'/{m["id"]}/insights',
+                               optional=True,
+                               metric='profile_visits,follows',
+                               period='lifetime')
+              for item in pv_ins.get('data', []):
+                  val = item.get('value') or ((item.get('values') or [{}])[-1].get('value', 0))
+                  post[item['name']] = val or 0
 
               # Reel-specific insights (optional — not all video posts are Reels)
               if is_reel or is_video:
