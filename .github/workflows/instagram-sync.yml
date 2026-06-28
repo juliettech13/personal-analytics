@@ -86,25 +86,28 @@ jobs:
           posts = []
           for m in media_resp.get('data', []):
               post = {
-                  'id':          m['id'],
-                  'date':        m.get('timestamp', '')[:10],
-                  'type':        m.get('media_type', ''),
-                  'caption':     (m.get('caption') or '')[:300],
-                  'likes':       m.get('like_count', 0),
-                  'comments':    m.get('comments_count', 0),
-                  'url':         m.get('permalink', ''),
-                  'impressions': 0,
-                  'reach':       0,
-                  'saves':       0,
+                  'id':                m['id'],
+                  'date':              m.get('timestamp', '')[:10],
+                  'type':              m.get('media_type', ''),
+                  'caption':           (m.get('caption') or '')[:300],
+                  'likes':             m.get('like_count', 0),
+                  'comments':          m.get('comments_count', 0),
+                  'url':               m.get('permalink', ''),
+                  'reach':             0,
+                  'saves':             0,
+                  'shares':            0,
+                  'total_interactions': 0,
               }
-              # Insights (requires Creator/Business account)
-              ins = api_get(f'/{m["id"]}/insights', metric='impressions,reach,saved', period='lifetime')
+              # Insights — impressions removed in v22+; use reach/saved/shares/total_interactions
+              ins = api_get(f'/{m["id"]}/insights',
+                            metric='reach,saved,shares,total_interactions',
+                            period='lifetime')
               for item in ins.get('data', []):
                   key = 'saves' if item['name'] == 'saved' else item['name']
                   val = item.get('value') or ((item.get('values') or [{}])[-1].get('value', 0))
                   post[key] = val or 0
               posts.append(post)
-              print(f'  {post["date"]} {post["type"]}: ❤ {post["likes"]}  💬 {post["comments"]}  👁 {post["impressions"]}')
+              print(f'  {post["date"]} {post["type"]}: ❤ {post["likes"]}  💬 {post["comments"]}  🔁 {post["shares"]}  📊 {post["reach"]}')
 
           now   = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
           today = datetime.date.today().isoformat()
@@ -127,11 +130,12 @@ jobs:
           summary = {
               't':  now,
               'f':  followers,
-              'mc': len(posts),
               'pc': len(posts),
               'tl': max((p['likes']    for p in posts), default=0),
               'tc': max((p['comments'] for p in posts), default=0),
-              'al': round(sum(p['likes'] for p in posts) / max(len(posts), 1), 1),
+              'al': round(sum(p['likes']  for p in posts) / max(len(posts), 1), 1),
+              'tr': sum(p['reach']   for p in posts),
+              'ts': sum(p['shares']  for p in posts),
           }
           with open('data/history.jsonl', 'a') as f:
               f.write(json.dumps(summary) + '\n')
@@ -144,7 +148,9 @@ jobs:
               json.dump(full, f, indent=2)
           print(f'✓ Wrote data/daily/{today}.json')
 
-          print(f'\nDone: {followers:,} followers · {len(posts)} posts fetched')
+          total_reach  = sum(p['reach']  for p in posts)
+          total_shares = sum(p['shares'] for p in posts)
+          print(f'\nDone: {followers:,} followers · {len(posts)} posts · {total_reach:,} total reach · {total_shares:,} total shares')
           EOF
 
       - name: Commit & push data
