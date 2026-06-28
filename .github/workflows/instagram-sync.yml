@@ -1,7 +1,6 @@
 name: Sync Instagram Analytics
 
-# Runs every hour — completely free on public repos (unlimited GitHub Actions minutes)
-# Instagram data doesn't change faster than this anyway
+# Runs every hour — free on private repos (2,000 min/month limit; ~720 min/month used)
 on:
   schedule:
     - cron: '0 * * * *'   # every hour, on the hour
@@ -25,9 +24,9 @@ jobs:
           import json, datetime, urllib.request, os, pathlib, sys
 
           TOKEN = os.environ['IG_TOKEN']
-          BASE  = 'https://graph.facebook.com/v19.0'
+          BASE  = 'https://graph.facebook.com/v22.0'
 
-          def api_get(path, **params):
+          def api_get(path, optional=False, **params):
               params['access_token'] = TOKEN
               qs = '&'.join(f'{k}={v}' for k, v in params.items())
               url = f'{BASE}{path}?{qs}'
@@ -36,20 +35,27 @@ jobs:
                       data = json.loads(r.read())
               except urllib.error.HTTPError as e:
                   body = e.read().decode('utf-8', errors='replace')
+                  if optional:
+                      print(f'  (optional) HTTP {e.code} on {path} — skipping', file=sys.stderr)
+                      return {}
                   print(f'HTTP {e.code} on {path}:\n{body}', file=sys.stderr)
                   sys.exit(1)
               except Exception as e:
+                  if optional:
+                      print(f'  (optional) request failed on {path}: {e} — skipping', file=sys.stderr)
+                      return {}
                   print(f'Request failed on {path}: {e}', file=sys.stderr)
                   sys.exit(1)
               if 'error' in data:
                   err = data['error']
+                  if optional:
+                      print(f'  (optional) Graph API error on {path}: {err.get("message")} — skipping', file=sys.stderr)
+                      return {}
                   print(f'Graph API error on {path}:\n  code={err.get("code")} type={err.get("type")}\n  message={err.get("message")}', file=sys.stderr)
                   sys.exit(1)
               return data
 
           # ── Discover Instagram Business Account ID ───────────────────────────
-          # The correct ID must come from the Facebook Page's instagram_business_account,
-          # NOT from a Facebook user ID (which won't have a /media edge).
           pages_resp = api_get('/me/accounts',
                                fields='id,name,instagram_business_account')
           ig_user_id = None
@@ -62,86 +68,143 @@ jobs:
 
           if not ig_user_id:
               print('ERROR: No Instagram Business Account found.', file=sys.stderr)
-              print('Make sure:', file=sys.stderr)
-              print('  1. @_juliettech is a Creator or Business account (not Personal)', file=sys.stderr)
-              print('  2. It is connected to a Facebook Page', file=sys.stderr)
-              print('  3. The token has pages_read_engagement + instagram_basic permissions', file=sys.stderr)
-              print(f'  Pages visible to this token: {[p.get("name") for p in pages_resp.get("data", [])]}', file=sys.stderr)
+              print(f'  Pages visible: {[p.get("name") for p in pages_resp.get("data", [])]}', file=sys.stderr)
               sys.exit(1)
 
           # ── Profile ──────────────────────────────────────────────────────────
           profile = api_get(f'/{ig_user_id}',
-                            fields='id,username,followers_count,biography,website')
+                            fields='id,username,followers_count,follows_count,biography,website,profile_picture_url')
           followers   = profile.get('followers_count', 0)
+          following   = profile.get('follows_count', 0)
           username    = profile.get('username', '_juliettech')
-          print(f'@{username}: {followers:,} followers')
+          biography   = profile.get('biography', '')
+          website     = profile.get('website', '')
+          profile_pic = profile.get('profile_picture_url', '')
+          print(f'@{username}: {followers:,} followers · {following:,} following')
+
+          # ── Account-level insights (last 7 days, daily period) ────────────────
+          # reach, profile_views, website_clicks, accounts_engaged, follows_and_unfollows
+          acct_ins = api_get(f'/{ig_user_id}/insights',
+                             optional=True,
+                             metric='reach,profile_views,website_clicks,accounts_engaged,follows_and_unfollows',
+                             period='day',
+                             since=int((datetime.datetime.utcnow() - datetime.timedelta(days=7)).timestamp()),
+                             until=int(datetime.datetime.utcnow().timestamp()))
+          acct_metrics = {}
+          for item in acct_ins.get('data', []):
+              vals = item.get('values', [])
+              # Sum the last 7 days for a weekly total
+              acct_metrics[item['name']] = sum(v.get('value', 0) for v in vals)
+          if acct_metrics:
+              print(f'Account (7d): reach={acct_metrics.get("reach",0):,}  profile_views={acct_metrics.get("profile_views",0):,}  website_clicks={acct_metrics.get("website_clicks",0):,}')
 
           # ── Recent media ─────────────────────────────────────────────────────
           media_resp = api_get(
               f'/{ig_user_id}/media',
-              fields='id,caption,media_type,timestamp,like_count,comments_count,permalink',
+              fields='id,caption,media_type,media_product_type,timestamp,like_count,comments_count,permalink,thumbnail_url,is_shared_to_feed',
               limit=20
           )
 
           posts = []
           for m in media_resp.get('data', []):
+              media_type   = m.get('media_type', '')
+              product_type = m.get('media_product_type', 'FEED')
+              is_reel      = product_type == 'REELS'
+              is_video     = media_type == 'VIDEO'
+
               post = {
-                  'id':                m['id'],
-                  'date':              m.get('timestamp', '')[:10],
-                  'type':              m.get('media_type', ''),
-                  'caption':           (m.get('caption') or '')[:300],
-                  'likes':             m.get('like_count', 0),
-                  'comments':          m.get('comments_count', 0),
-                  'url':               m.get('permalink', ''),
-                  'reach':             0,
-                  'saves':             0,
-                  'shares':            0,
+                  'id':                 m['id'],
+                  'date':               m.get('timestamp', '')[:10],
+                  'type':               media_type,
+                  'product_type':       product_type,
+                  'caption':            (m.get('caption') or '')[:300],
+                  'likes':              m.get('like_count', 0),
+                  'comments':           m.get('comments_count', 0),
+                  'url':                m.get('permalink', ''),
+                  'thumbnail_url':      m.get('thumbnail_url', ''),
+                  'is_shared_to_feed':  m.get('is_shared_to_feed', False),
+                  # Insight fields — populated below
+                  'reach':              0,
+                  'saves':              0,
+                  'shares':             0,
                   'total_interactions': 0,
+                  'profile_visits':     0,
+                  'follows':            0,
+                  # Video/Reel-specific
+                  'plays':              0,
+                  'avg_watch_time_ms':  0,
               }
-              # Insights — impressions removed in v22+; use reach/saved/shares/total_interactions
+
+              # Base insights (all media types, v22+ compatible)
               ins = api_get(f'/{m["id"]}/insights',
-                            metric='reach,saved,shares,total_interactions',
+                            metric='reach,saved,shares,total_interactions,profile_visits,follows',
                             period='lifetime')
               for item in ins.get('data', []):
                   key = 'saves' if item['name'] == 'saved' else item['name']
                   val = item.get('value') or ((item.get('values') or [{}])[-1].get('value', 0))
                   post[key] = val or 0
-              posts.append(post)
-              print(f'  {post["date"]} {post["type"]}: ❤ {post["likes"]}  💬 {post["comments"]}  🔁 {post["shares"]}  📊 {post["reach"]}')
 
+              # Reel-specific insights (optional — not all video posts are Reels)
+              if is_reel or is_video:
+                  reel_ins = api_get(f'/{m["id"]}/insights',
+                                     optional=True,
+                                     metric='plays,ig_reels_avg_watch_time',
+                                     period='lifetime')
+                  for item in reel_ins.get('data', []):
+                      if item['name'] == 'plays':
+                          post['plays'] = item.get('value', 0) or 0
+                      elif item['name'] == 'ig_reels_avg_watch_time':
+                          post['avg_watch_time_ms'] = item.get('value', 0) or 0
+
+              posts.append(post)
+              reel_tag = f' ▶ {post["plays"]:,} plays' if post['plays'] else ''
+              print(f'  {post["date"]} {post["product_type"]}: ❤ {post["likes"]}  💬 {post["comments"]}  🔁 {post["shares"]}  📊 {post["reach"]}  👤 {post["profile_visits"]}  ➕ {post["follows"]}{reel_tag}')
+
+          # ── Assemble output ───────────────────────────────────────────────────
           now   = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
           today = datetime.date.today().isoformat()
 
           full = {
-              'username':    username,
-              'followers':   followers,
-              'media_count': len(posts),   # derived from media list (media_count field deprecated)
-              'posts':       posts,
-              'fetched_at':  now,
+              'username':        username,
+              'followers':       followers,
+              'following':       following,
+              'biography':       biography,
+              'website':         website,
+              'profile_pic':     profile_pic,
+              'media_count':     len(posts),
+              'posts':           posts,
+              'account_metrics': acct_metrics,   # 7-day account-wide totals
+              'fetched_at':      now,
           }
 
-          # ── 1. data/latest.json  (dashboard reads this) ───────────────────
+          # ── 1. data/latest.json  (dashboard reads this) ───────────────────────
           pathlib.Path('data').mkdir(exist_ok=True)
           with open('data/latest.json', 'w') as f:
               json.dump(full, f, indent=2)
           print(f'✓ Wrote data/latest.json')
 
-          # ── 2. data/history.jsonl  (compact per-run log, tiny ~200 B/line) ─
+          # ── 2. data/history.jsonl  (compact per-run log) ─────────────────────
           summary = {
               't':  now,
               'f':  followers,
+              'fw': following,
               'pc': len(posts),
-              'tl': max((p['likes']    for p in posts), default=0),
-              'tc': max((p['comments'] for p in posts), default=0),
-              'al': round(sum(p['likes']  for p in posts) / max(len(posts), 1), 1),
-              'tr': sum(p['reach']   for p in posts),
-              'ts': sum(p['shares']  for p in posts),
+              'tl': max((p['likes']        for p in posts), default=0),
+              'tc': max((p['comments']     for p in posts), default=0),
+              'al': round(sum(p['likes']   for p in posts) / max(len(posts), 1), 1),
+              'tr': sum(p['reach']         for p in posts),
+              'ts': sum(p['shares']        for p in posts),
+              'tp': sum(p['plays']         for p in posts),
+              'tf': sum(p['follows']       for p in posts),
+              'ar': acct_metrics.get('reach', 0),
+              'pv': acct_metrics.get('profile_views', 0),
+              'wc': acct_metrics.get('website_clicks', 0),
           }
           with open('data/history.jsonl', 'a') as f:
               f.write(json.dumps(summary) + '\n')
           print(f'✓ Appended to data/history.jsonl')
 
-          # ── 3. data/daily/YYYY-MM-DD.json  (full daily snapshot archive) ───
+          # ── 3. data/daily/YYYY-MM-DD.json  (full daily snapshot) ─────────────
           daily_dir = pathlib.Path('data/daily')
           daily_dir.mkdir(parents=True, exist_ok=True)
           with open(daily_dir / f'{today}.json', 'w') as f:
@@ -150,7 +213,8 @@ jobs:
 
           total_reach  = sum(p['reach']  for p in posts)
           total_shares = sum(p['shares'] for p in posts)
-          print(f'\nDone: {followers:,} followers · {len(posts)} posts · {total_reach:,} total reach · {total_shares:,} total shares')
+          total_plays  = sum(p['plays']  for p in posts)
+          print(f'\nDone: {followers:,} followers · {len(posts)} posts · {total_reach:,} reach · {total_shares:,} shares · {total_plays:,} plays')
           EOF
 
       - name: Commit & push data
