@@ -19,15 +19,13 @@ jobs:
 
       - name: Fetch Instagram data & save
         env:
-          IG_TOKEN:   ${{ secrets.IG_TOKEN }}
-          IG_USER_ID: '446641421869856'
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
         run: |
           python3 - << 'EOF'
           import json, datetime, urllib.request, os, pathlib, sys
 
-          TOKEN   = os.environ['IG_TOKEN']
-          USER_ID = os.environ['IG_USER_ID']
-          BASE    = 'https://graph.facebook.com/v19.0'
+          TOKEN = os.environ['IG_TOKEN']
+          BASE  = 'https://graph.facebook.com/v19.0'
 
           def api_get(path, **params):
               params['access_token'] = TOKEN
@@ -49,16 +47,38 @@ jobs:
                   sys.exit(1)
               return data
 
+          # ── Discover Instagram Business Account ID ───────────────────────────
+          # The correct ID must come from the Facebook Page's instagram_business_account,
+          # NOT from a Facebook user ID (which won't have a /media edge).
+          pages_resp = api_get('/me/accounts',
+                               fields='id,name,instagram_business_account')
+          ig_user_id = None
+          for page in pages_resp.get('data', []):
+              ig_biz = page.get('instagram_business_account')
+              if ig_biz and ig_biz.get('id'):
+                  ig_user_id = ig_biz['id']
+                  print(f'Found Instagram Business Account {ig_user_id} via page "{page["name"]}"')
+                  break
+
+          if not ig_user_id:
+              print('ERROR: No Instagram Business Account found.', file=sys.stderr)
+              print('Make sure:', file=sys.stderr)
+              print('  1. @_juliettech is a Creator or Business account (not Personal)', file=sys.stderr)
+              print('  2. It is connected to a Facebook Page', file=sys.stderr)
+              print('  3. The token has pages_read_engagement + instagram_basic permissions', file=sys.stderr)
+              print(f'  Pages visible to this token: {[p.get("name") for p in pages_resp.get("data", [])]}', file=sys.stderr)
+              sys.exit(1)
+
           # ── Profile ──────────────────────────────────────────────────────────
-          profile = api_get(f'/{USER_ID}',
-                            fields='id,username,followers_count')
+          profile = api_get(f'/{ig_user_id}',
+                            fields='id,username,followers_count,biography,website')
           followers   = profile.get('followers_count', 0)
           username    = profile.get('username', '_juliettech')
           print(f'@{username}: {followers:,} followers')
 
           # ── Recent media ─────────────────────────────────────────────────────
           media_resp = api_get(
-              f'/{USER_ID}/media',
+              f'/{ig_user_id}/media',
               fields='id,caption,media_type,timestamp,like_count,comments_count,permalink',
               limit=20
           )
@@ -77,7 +97,7 @@ jobs:
                   'reach':       0,
                   'saves':       0,
               }
-              # Insights (requires professional/creator account; silently skipped if unavailable)
+              # Insights (requires Creator/Business account)
               ins = api_get(f'/{m["id"]}/insights', metric='impressions,reach,saved', period='lifetime')
               for item in ins.get('data', []):
                   key = 'saves' if item['name'] == 'saved' else item['name']
