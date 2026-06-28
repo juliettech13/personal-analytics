@@ -36,13 +36,18 @@ jobs:
               try:
                   with urllib.request.urlopen(url, timeout=15) as r:
                       data = json.loads(r.read())
-                      if 'error' in data:
-                          print(f'  API error on {path}: {data["error"].get("message",data["error"])}', file=sys.stderr)
-                          return {}
-                      return data
+              except urllib.error.HTTPError as e:
+                  body = e.read().decode('utf-8', errors='replace')
+                  print(f'HTTP {e.code} on {path}:\n{body}', file=sys.stderr)
+                  sys.exit(1)
               except Exception as e:
-                  print(f'  HTTP error on {path}: {e}', file=sys.stderr)
-                  return {}
+                  print(f'Request failed on {path}: {e}', file=sys.stderr)
+                  sys.exit(1)
+              if 'error' in data:
+                  err = data['error']
+                  print(f'Graph API error on {path}:\n  code={err.get("code")} type={err.get("type")}\n  message={err.get("message")}', file=sys.stderr)
+                  sys.exit(1)
+              return data
 
           # ── Profile ──────────────────────────────────────────────────────────
           profile = api_get(f'/{USER_ID}',
