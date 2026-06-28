@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nerd_splash analytics</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #F5F3FF;
+  --surface: #FFFFFF;
+  --surface2: #F9F8FF;
+  --border: #E5E1F5;
+  --border2: #EDE9FE;
+  --purple: #7C3AED;
+  --purple-light: #EDE9FE;
+  --cyan: #0891B2;
+  --green: #059669;
+  --green-light: #D1FAE5;
+  --orange: #D97706;
+  --orange-light: #FEF3C7;
+  --red: #DC2626;
+  --red-light: #FEE2E2;
+  --blue: #2563EB;
+  --blue-light: #DBEAFE;
+  --pink: #DB2777;
+  --pink-light: #FCE7F3;
+  --text: #111827;
+  --text2: #374151;
+  --muted: #6B7280;
+  --muted2: #9CA3AF;
+  --mono: 'SF Mono','Fira Code',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
+
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px}
+.logo{font-size:17px;font-weight:800;letter-spacing:-0.5px;font-family:var(--mono)}
+.logo em{color:var(--purple);font-style:normal}
+.badge{font-size:11px;font-family:var(--mono);background:var(--purple-light);color:var(--purple);padding:2px 8px;border-radius:999px;border:1px solid var(--border2);font-weight:600}
+.header-left{display:flex;align-items:center;gap:10px}
+.header-right{display:flex;align-items:center;gap:12px}
+.last-updated{color:var(--muted);font-size:12px}
+.refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;display:flex;align-items:center;gap:5px}
+.refresh-btn:hover{border-color:var(--purple);color:var(--purple)}
+.refresh-btn:disabled{opacity:.5;cursor:not-allowed}
+.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.loading-pill{display:none;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.spinner{width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.platform-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 22px;display:flex;gap:2px;overflow-x:auto}
+.tab-btn{padding:10px 16px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;display:flex;align-items:center;gap:7px;transition:all .15s;position:relative;top:1px;white-space:nowrap;flex-shrink:0}
+.tab-btn.active{color:var(--purple);border-bottom-color:var(--purple)}
+.tab-btn:not(.active):hover{color:var(--text)}
+.tab-lock{font-size:10px;opacity:.6}
+
+.content{padding:18px 22px;max-width:1080px;margin:0 auto}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+.row-between{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap}
+.section-title{font-size:15px;font-weight:700}
+.section-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.tf-group{display:flex;gap:4px}
+.tf-btn{padding:4px 10px;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s}
+.tf-btn.active{background:var(--purple-light);border-color:var(--purple);color:var(--purple)}
+
+.insight{background:var(--purple-light);border:1px solid var(--border2);border-left:3px solid var(--purple);border-radius:8px;padding:11px 15px;font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:15px 17px}
+.kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:7px}
+.kpi-value{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1}
+.kpi-sub{font-size:11px;color:var(--muted2);margin-top:5px}
+.kpi-trend{font-size:12px;font-weight:500;margin-top:3px}
+.up{color:var(--green)}.down{color:var(--red)}.neutral{color:var(--muted)}
+
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:17px 19px}
+.chart-card.full{grid-column:1/-1}
+.chart-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:13px}
+.chart-title{font-size:13px;font-weight:700}
+.chart-hint{font-size:11px;color:var(--muted)}
+.chart-wrap{position:relative;height:185px}
+
+.posts-table{width:100%;border-collapse:collapse;font-size:13px}
+.posts-table th{text-align:left;padding:7px 11px;color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border)}
+.posts-table td{padding:8px 11px;border-bottom:1px solid #F3F0FF}
+.posts-table tr:last-child td{border-bottom:none}
+.posts-table tr:hover td{background:var(--surface2)}
+.post-title{font-weight:600;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:12px;font-weight:700;font-family:var(--mono)}
+.pill-great{background:var(--green-light);color:var(--green)}
+.pill-good{background:var(--purple-light);color:var(--purple)}
+.pill-ok{background:var(--orange-light);color:var(--orange)}
+.pill-low{background:var(--red-light);color:var(--red)}
+
+.src-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.src-label{width:100px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-bg{flex:1;height:7px;background:var(--bg);border-radius:4px}
+.src-fill{height:7px;border-radius:4px}
+.src-count{width:22px;text-align:right;font-size:12px;font-family:var(--mono);color:var(--text2)}
+
+.platform-header{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.platform-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.platform-icon.ig{background:var(--pink-light)}
+.platform-icon.li{background:var(--blue-light)}
+
+.info-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px}
+.info-box-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.info-box-sub{font-size:12px;color:var(--muted)}
+
+.state-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:28px 24px;text-align:center;margin-bottom:12px}
+.state-icon{font-size:32px;margin-bottom:10px}
+.state-title{font-size:15px;font-weight:700;margin-bottom:6px}
+.state-desc{font-size:13px;color:var(--muted);line-height:1.6;max-width:480px;margin:0 auto}
+
+.limit-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px 36px;text-align:center;max-width:520px;margin:24px auto}
+.limit-steps{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;text-align:left;margin-top:16px}
+.limit-steps strong{font-size:13px;color:var(--text)}
+.limit-steps ol{padding-left:18px;margin-top:8px}
+.limit-steps li{margin-bottom:5px;font-size:12px;color:var(--text2);line-height:1.5}
+.limit-steps code{font-family:var(--mono);background:var(--border2);padding:1px 5px;border-radius:3px;font-size:11px}
+.metrics-preview{list-style:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.metrics-preview li{padding:3px 0;font-size:12px;color:var(--text2)}
+.metrics-preview li::before{content:"→ ";color:var(--purple);font-weight:700}
+
+.status-bar{border-top:1px solid var(--border);background:var(--surface);padding:7px 22px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:14px}
+.status-bar-right{margin-left:auto}
+
+.tab-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:36px;color:var(--muted);font-size:13px}
+
+@media(max-width:860px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .charts-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">nerd<em>_splash</em></div>
+    <div class="badge">analytics</div>
+    <div class="loading-pill" id="loadingPill">
+      <div class="spinner"></div>
+      <span id="loadingText">fetching live data...</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="last-updated" id="lastUpdated">—</span>
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshCurrentTab()">↻ Refresh</button>
+    <div class="live-dot"></div>
+  </div>
+</div>
+
+<div class="platform-nav">
+  <button class="tab-btn active" id="tab-newsletter" onclick="switchTab('newsletter')">✉️ Newsletter</button>
+  <button class="tab-btn" id="tab-instagram" onclick="switchTab('instagram')">📸 Instagram</button>
+  <button class="tab-btn" id="tab-linkedin" onclick="switchTab('linkedin')">💼 LinkedIn <span class="tab-lock">⚠️</span></button>
+  <button class="tab-btn" id="tab-twitter" onclick="switchTab('twitter')">𝕏 Twitter/X <span class="tab-lock">⚠️</span></button>
+</div>
+
+<div class="content">
+
+  <!-- ══ NEWSLETTER ══ -->
+  <div class="tab-panel active" id="panel-newsletter">
+    <div class="row-between">
+      <div>
+        <div class="section-title">nerd_splash · newsletter</div>
+        <div class="section-sub">newsletter.juliet.tech · beehiiv · live</div>
+      </div>
+      <div class="tf-group">
+        <button class="tf-btn" id="tf-7d" onclick="setTimeframe('7d')">7d</button>
+        <button class="tf-btn active" id="tf-4w" onclick="setTimeframe('4w')">4w</button>
+        <button class="tf-btn" id="tf-3m" onclick="setTimeframe('3m')">3m</button>
+        <button class="tf-btn" id="tf-12m" onclick="setTimeframe('12m')">12m</button>
+      </div>
+    </div>
+    <div class="insight" id="insightBox">Loading insights...</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Subscribers</div>
+        <div class="kpi-value" id="kpiSubs">—</div>
+        <div class="kpi-sub">active</div>
+        <div class="kpi-trend neutral" id="kpiSubsTrend">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Open Rate</div>
+        <div class="kpi-value up" id="kpiOpen">—</div>
+        <div class="kpi-sub">12 month avg</div>
+        <div class="kpi-trend up" id="kpiOpenTrend">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Click Rate</div>
+        <div class="kpi-value" style="color:var(--cyan)" id="kpiCtr">—</div>
+        <div class="kpi-sub">12 month avg</div>
+        <div class="kpi-trend up" id="kpiCtrTrend">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Net Growth</div>
+        <div class="kpi-value" id="kpiGrowth">—</div>
+        <div class="kpi-sub">12 months</div>
+        <div class="kpi-trend neutral" id="kpiGrowthTrend">—</div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-header"><div class="chart-title">Open Rate per Issue</div><div class="chart-hint">recent 5</div></div>
+        <div class="chart-wrap"><canvas id="openRateChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header"><div class="chart-title">Click Rate per Issue</div><div class="chart-hint">color = tier</div></div>
+        <div class="chart-wrap"><canvas id="ctrChart"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-bottom:12px">
+      <div class="chart-header">
+        <div class="chart-title">Recent Issues</div>
+        <div class="chart-hint">🟢≥50% · 🟣≥40% · 🟠≥30% open &nbsp;|&nbsp; CTR: 🟢≥6% · 🟣≥4% · 🟠≥2%</div>
+      </div>
+      <table class="posts-table"><thead><tr><th>Issue</th><th>Date</th><th>Sent</th><th>Open Rate</th><th>CTR</th><th>Unsubs</th></tr></thead>
+      <tbody id="postsBody"><tr><td colspan="6" style="color:var(--muted);text-align:center;padding:18px">Loading...</td></tr></tbody></table>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-header"><div class="chart-title">Acquisition Sources</div><div class="chart-hint">12 months</div></div>
+        <div id="sourcesContainer"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header"><div class="chart-title">Subscriber Growth</div><div class="chart-hint">weekly snapshots</div></div>
+        <div class="chart-wrap"><canvas id="growthChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ INSTAGRAM ══ -->
+  <div class="tab-panel" id="panel-instagram">
+    <div class="platform-header">
+      <div class="platform-icon ig">📸</div>
+      <div>
+        <div class="section-title">Instagram · @_juliettech</div>
+        <div class="section-sub">GitHub Actions hourly sync → Vercel deploy → dashboard</div>
+      </div>
+    </div>
+    <div id="ig-content">
+      <div class="tab-loading"><div class="spinner"></div> Loading Instagram data...</div>
+    </div>
+  </div>
+
+  <!-- ══ LINKEDIN ══ -->
+  <div class="tab-panel" id="panel-linkedin">
+    <div class="limit-card">
+      <div style="font-size:38px;margin-bottom:12px">💼</div>
+      <div class="state-title">LinkedIn — Direct API Token Required</div>
+      <div class="state-desc" style="margin-top:8px">
+        LinkedIn Pages API requires an OAuth access token with <strong>r_organization_social</strong> permission. Paste your token into the <code style="font-family:var(--mono);background:var(--border2);padding:1px 5px;border-radius:3px;font-size:11px">LI_TOKEN</code> constant at the top of the dashboard to go live.
+      </div>
+      <div class="limit-steps">
+        <strong>To get a LinkedIn access token:</strong>
+        <ol>
+          <li>Go to <strong>linkedin.com/developers</strong> → create an app (or use existing)</li>
+          <li>Request <strong>r_organization_social</strong> + <strong>r_organization_admin</strong> permissions</li>
+          <li>Generate a token via OAuth 2.0 (valid 60 days)</li>
+          <li>Paste the token as <code>LI_TOKEN</code> in this file — LinkedIn data will load automatically</li>
+        </ol>
+        <ul class="metrics-preview">
+          <li>Followers & growth per page</li>
+          <li>Impressions & engagement rate</li>
+          <li>Likes, comments, shares</li>
+          <li>All 3 pages: Helicone · WWDW · Adult Camp</li>
+        </ul>
+      </div>
+    </div>
+    <!-- Seed data fallback shown below token prompt -->
+    <div style="max-width:700px;margin:0 auto">
+      <div class="insight" style="margin-top:0">📊 Showing <strong>seed data</strong> from 2026-06-25 · Add LI_TOKEN above to enable live updates.</div>
+      <div id="li-content">
+        <div class="tab-loading"><div class="spinner"></div> Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TWITTER ══ -->
+  <div class="tab-panel" id="panel-twitter">
+    <div class="limit-card">
+      <div style="font-size:38px;margin-bottom:12px">𝕏</div>
+      <div class="state-title">Twitter/X Organic — API Access Required</div>
+      <div class="state-desc" style="margin-top:8px">
+        The X API v2 needs <strong>Basic tier access</strong> ($100/mo) to pull tweet analytics for <code style="font-family:var(--mono);background:var(--border2);padding:1px 5px;border-radius:3px;font-size:11px">@juliettech</code>.
+      </div>
+      <div class="limit-steps">
+        <strong>To unlock Twitter/X analytics:</strong>
+        <ol>
+          <li>Go to <strong>developer.twitter.com</strong> and apply for Basic access ($100/mo)</li>
+          <li>Generate a Bearer token and add it as <code>X_TOKEN</code> in this file</li>
+          <li>Come back and refresh — this tab will populate automatically</li>
+        </ol>
+        <ul class="metrics-preview">
+          <li>Followers count & growth trend</li>
+          <li>Impressions & reach per tweet</li>
+          <li>Engagement rate (likes, retweets, replies)</li>
+          <li>Top performing tweets by engagement</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="status-bar">
+  <div class="live-dot" style="width:5px;height:5px"></div>
+  <span id="statusText">Initializing...</span>
+  <span class="status-bar-right">nerd_splash analytics · beehiiv + instagram (gh actions) + linkedin</span>
+</div>
+
+<script>
+// ════════════════════
+// CONFIG — edit tokens here
+// ════════════════════
+const PUB_ID   = 'pub_4f7fe65c-0168-4bbd-9400-2e0d9b2bcc83';
+const BEEHIIV  = 'mcp__414789bc-6b6b-4b36-bfac-9fa4c0d1c69b__';
+
+// Instagram @_juliettech — data fetched hourly by GitHub Actions, served via Vercel (same origin)
+// Private repo → Vercel auto-deploys on every data push; no CORS needed (relative URL)
+const GH_IG_URL = '/data/latest.json';
+const IG_USERNAME = '@_juliettech';
+
+// LinkedIn — paste your OAuth access token here to enable live data
+// Get it from: linkedin.com/developers → OAuth 2.0 → r_organization_social
+const LI_TOKEN = ''; // e.g. 'AQX...'
+
+// LinkedIn page IDs
+const LI_PAGES = {
+  helicone:  { id:'92878545',  urn:'urn:li:organization:92878545',  name:'Helicone (YC W23)' },
+  wwdw:      { id:'103173430', urn:'urn:li:organization:103173430', name:"Wealthy Women Don't Wait" },
+  adulcamp:  { id:'105190061', urn:'urn:li:organization:105190061', name:'Adult Camp' }
+};
+
+const LS_KEY = 'nerdsplash_analytics_v5';
+
+// ── Seed data ──
+const SEED_SNAPSHOTS = [
+  { week:'2026-W26', date:'2026-06-25', subscribers:1112, open_rate:49.47, click_rate:4.95, new_subs:52, churned:53,
+    acquisition:[{source:'Instagram',count:12},{source:'Direct',count:33},{source:'LinkedIn',count:3},{source:'Embed',count:3}] }
+];
+const SEED_POSTS = [
+  {id:'p1',title:'I think the web is dying',      date:'2025-11-20',open_rate:53.0, ctr:4.94,recipients:1097,unsubs:9},
+  {id:'p2',title:'Hygene, why nots & conviction', date:'2025-11-06',open_rate:51.25,ctr:5.25,recipients:1103,unsubs:9},
+  {id:'p3',title:'The ROI of a good date',        date:'2026-05-14',open_rate:44.92,ctr:6.21,recipients:1037,unsubs:13},
+  {id:'p4',title:'I built the room',              date:'2026-06-04',open_rate:53.5, ctr:8.22,recipients:1024,unsubs:3},
+  {id:'p5',title:'The Empire Strikes Back',       date:'2026-06-25',open_rate:35.6, ctr:1.09,recipients:1055,unsubs:3}
+];
+const SEED_IG  = { followers:null, media_count:null, posts:[], fetched:'—', username:'_juliettech' };
+const SEED_LI  = {
+  helicone:  { followers:2494, new_followers:40, impressions:353, engagements:22, engagement_rate:6.23, fetched:'2026-06-25' },
+  wwdw:      { followers:17,   new_followers:1,  impressions:0,   engagements:0,  engagement_rate:null, fetched:'2026-06-25' },
+  adulcamp:  { followers:5,    new_followers:0,  impressions:0,   engagements:0,  engagement_rate:null, fetched:'2026-06-25' }
+};
+
+// ════════════════════
+// STATE
+// ════════════════════
+let historySnaps = [], currentPosts = SEED_POSTS, currentTimeframe = '4w';
+let igData = {...SEED_IG};
+let liData = {...SEED_LI}, currentLiPage = 'helicone';
+let charts = {}, tabLoaded = { newsletter:false, instagram:false, linkedin:false };
+
+// ════════════════════
+// HELPERS
+// ════════════════════
+function getWeekKey(d=new Date()){
+  const jan1=new Date(d.getFullYear(),0,1);
+  const wk=Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+  return `${d.getFullYear()}-W${String(wk).padStart(2,'0')}`;
+}
+function fmtDate(s){return new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+function fmtNum(n){return n==null?'—':Number(n).toLocaleString()}
+function pillClass(v,[g,p,o]){return v>=g?'pill-great':v>=p?'pill-good':v>=o?'pill-ok':'pill-low'}
+
+function parseResult(r){
+  if(!r||r.isError) return null;
+  if(r.structuredContent) return r.structuredContent;
+  try{return JSON.parse(r.content?.[0]?.text)}catch{return null}
+}
+
+// ════════════════════
+// LOCAL STORAGE
+// ════════════════════
+function loadHistory(){
+  try{
+    const stored=JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+    const storedSnaps=stored.snapshots||[];
+    const merged=[...SEED_SNAPSHOTS];
+    storedSnaps.forEach(s=>{
+      const i=merged.findIndex(m=>m.week===s.week);
+      if(i===-1) merged.push(s); else merged[i]=s;
+    });
+    merged.sort((a,b)=>a.week.localeCompare(b.week));
+    return{snapshots:merged, posts:stored.posts||SEED_POSTS};
+  }catch{return{snapshots:SEED_SNAPSHOTS,posts:SEED_POSTS}}
+}
+
+function saveSnapshot(stats,posts){
+  try{
+    const stored=JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+    const snaps=stored.snapshots||[];
+    const week=getWeekKey();
+    const filtered=snaps.filter(s=>s.week!==week);
+    filtered.push({
+      week, date:new Date().toISOString().split('T')[0],
+      subscribers:stats.current_active_subscribers,
+      open_rate:stats.last_12_months?.open_rate,
+      click_rate:stats.last_12_months?.click_rate,
+      new_subs:stats.last_12_months?.new_subscribers,
+      churned:stats.last_12_months?.churned_subscribers,
+      acquisition:(stats.last_12_months?.acquisition_sources||[]).map(s=>({
+        source:s.source.replace(/website:\s?/,'').replace(/import:\s?/,'')
+          .split('/')[0].trim()
+          .replace('instagram.com','Instagram').replace('linkedin.com','LinkedIn').replace('direct','Direct'),
+        count:s.count
+      }))
+    });
+    localStorage.setItem(LS_KEY,JSON.stringify({snapshots:filtered.slice(-52),posts:posts||stored.posts}));
+  }catch(e){console.warn('LS write failed',e)}
+}
+
+// ════════════════════
+// CHARTS
+// ════════════════════
+const BASE_OPTS={
+  responsive:true, maintainAspectRatio:false,
+  plugins:{
+    legend:{display:false},
+    tooltip:{backgroundColor:'#fff',borderColor:'#E5E1F5',borderWidth:1,titleColor:'#111827',bodyColor:'#6B7280',padding:10,cornerRadius:6}
+  },
+  scales:{
+    x:{grid:{color:'#F3F0FF'},ticks:{color:'#9CA3AF',font:{size:10}}},
+    y:{grid:{color:'#F3F0FF'},ticks:{color:'#9CA3AF',font:{size:11}}}
+  }
+};
+
+function renderOpenRateChart(posts){
+  const sorted=[...posts].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(charts.open) charts.open.destroy();
+  const ctx=document.getElementById('openRateChart').getContext('2d');
+  const grad=ctx.createLinearGradient(0,0,0,185);
+  grad.addColorStop(0,'rgba(5,150,105,.15)');grad.addColorStop(1,'rgba(5,150,105,0)');
+  charts.open=new Chart(ctx,{type:'line',
+    data:{labels:sorted.map(p=>p.title.length>17?p.title.slice(0,15)+'…':p.title),
+          datasets:[{data:sorted.map(p=>p.open_rate),borderColor:'#059669',backgroundColor:grad,tension:.4,pointBackgroundColor:'#059669',pointRadius:4,fill:true,borderWidth:2}]},
+    options:{...BASE_OPTS,scales:{...BASE_OPTS.scales,y:{...BASE_OPTS.scales.y,suggestedMin:20,suggestedMax:70,ticks:{color:'#9CA3AF',font:{size:11},callback:v=>v+'%'}}}}
+  });
+}
+
+function renderCTRChart(posts){
+  const sorted=[...posts].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const colors=sorted.map(p=>p.ctr>=6?'#059669':p.ctr>=4?'#7C3AED':p.ctr>=2?'#D97706':'#DC2626');
+  if(charts.ctr) charts.ctr.destroy();
+  const ctx=document.getElementById('ctrChart').getContext('2d');
+  charts.ctr=new Chart(ctx,{type:'bar',
+    data:{labels:sorted.map(p=>p.title.length>17?p.title.slice(0,15)+'…':p.title),
+          datasets:[{data:sorted.map(p=>p.ctr),backgroundColor:colors,borderRadius:5,borderSkipped:false}]},
+    options:{...BASE_OPTS,scales:{...BASE_OPTS.scales,y:{...BASE_OPTS.scales.y,ticks:{color:'#9CA3AF',font:{size:11},callback:v=>v+'%'}}}}
+  });
+}
+
+function renderGrowthChart(snaps){
+  if(!snaps?.length) return;
+  if(charts.growth) charts.growth.destroy();
+  const ctx=document.getElementById('growthChart').getContext('2d');
+  const grad=ctx.createLinearGradient(0,0,0,185);
+  grad.addColorStop(0,'rgba(124,58,237,.15)');grad.addColorStop(1,'rgba(124,58,237,0)');
+  charts.growth=new Chart(ctx,{type:'line',
+    data:{labels:snaps.map(s=>fmtDate(s.date)),
+          datasets:[{data:snaps.map(s=>s.subscribers),borderColor:'#7C3AED',backgroundColor:grad,tension:.4,pointBackgroundColor:'#7C3AED',pointRadius:snaps.length===1?5:3,fill:true,borderWidth:2}]},
+    options:{...BASE_OPTS,scales:{...BASE_OPTS.scales,y:{...BASE_OPTS.scales.y,ticks:{color:'#9CA3AF',font:{size:11},callback:v=>v.toLocaleString()}}}}
+  });
+}
+
+// ════════════════════
+// NEWSLETTER RENDER
+// ════════════════════
+function renderNewsletter(snaps,posts){
+  const latest=snaps[snaps.length-1];
+  historySnaps=snaps; currentPosts=posts;
+  document.getElementById('kpiSubs').textContent=fmtNum(latest.subscribers);
+  const net=(latest.new_subs||0)-(latest.churned||0);
+  const gEl=document.getElementById('kpiGrowth');
+  gEl.textContent=net>0?`+${net}`:String(net);
+  gEl.style.color=net>0?'var(--green)':net<0?'var(--orange)':'var(--muted)';
+  document.getElementById('kpiGrowthTrend').textContent=`${latest.new_subs||0} new · ${latest.churned||0} churned`;
+  document.getElementById('kpiOpen').textContent=latest.open_rate?`${latest.open_rate.toFixed(1)}%`:'—';
+  document.getElementById('kpiOpenTrend').textContent=latest.open_rate?`↑ ${(latest.open_rate/21).toFixed(1)}× industry avg`:'';
+  document.getElementById('kpiCtr').textContent=latest.click_rate?`${latest.click_rate.toFixed(2)}%`:'—';
+  document.getElementById('kpiCtrTrend').textContent=latest.click_rate?`↑ ${(latest.click_rate/2).toFixed(1)}× industry avg`:'';
+  document.getElementById('kpiSubsTrend').textContent=latest.date?`as of ${fmtDate(latest.date)}`:'';
+  const topCtr=posts.reduce((a,b)=>b.ctr>a.ctr?b:a,posts[0]);
+  const netStr=net<0
+    ?`📉 Churn outpacing acquisition by ${Math.abs(net)} subs. Quality is clearly there though — ${latest.open_rate?.toFixed(1)}% open rate is ${(latest.open_rate/21).toFixed(1)}× industry avg.`
+    :`⭐ <strong>"${topCtr.title}"</strong> top performer: ${topCtr.open_rate}% opens · <strong>${topCtr.ctr}% CTR</strong>. Overall open rate ${latest.open_rate?.toFixed(1)}% is ${(latest.open_rate/21).toFixed(1)}× the industry average (21%).`;
+  document.getElementById('insightBox').innerHTML=netStr;
+  const sorted=[...posts].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('postsBody').innerHTML=sorted.map(p=>`
+    <tr>
+      <td class="post-title">${p.title}</td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(p.date)}</td>
+      <td style="color:var(--muted);font-family:var(--mono)">${fmtNum(p.recipients)}</td>
+      <td><span class="pill ${pillClass(p.open_rate,[50,40,30])}">${p.open_rate.toFixed(1)}%</span></td>
+      <td><span class="pill ${pillClass(p.ctr,[6,4,2])}">${p.ctr.toFixed(2)}%</span></td>
+      <td style="color:${p.unsubs>10?'var(--red)':'var(--muted2)'};font-family:var(--mono)">${p.unsubs||0}</td>
+    </tr>`).join('');
+  const agg={};
+  (latest.acquisition||[]).forEach(s=>{agg[s.source]=(agg[s.source]||0)+s.count});
+  const items=Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const max=Math.max(...items.map(i=>i[1]),1);
+  const colors=['var(--purple)','var(--cyan)','var(--orange)','var(--green)','#9333EA','#0284C7'];
+  document.getElementById('sourcesContainer').innerHTML=items.map(([src,cnt],i)=>`
+    <div class="src-row">
+      <div class="src-label">${src}</div>
+      <div class="src-bg"><div class="src-fill" style="width:${(cnt/max*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div>
+      <div class="src-count">${cnt}</div>
+    </div>`).join('');
+  renderOpenRateChart(posts);
+  renderCTRChart(posts);
+  applyTimeframe(currentTimeframe,snaps);
+}
+
+function applyTimeframe(tf,snaps){
+  const days={'7d':7,'4w':28,'3m':90,'12m':365};
+  const cutoff=new Date(Date.now()-days[tf]*86400000).toISOString().split('T')[0];
+  const filtered=snaps.filter(s=>s.date>=cutoff);
+  renderGrowthChart(filtered.length?filtered:snaps);
+}
+
+// ════════════════════
+// INSTAGRAM RENDER
+// ════════════════════
+function renderInstagram(){
+  const data=igData;
+  const el=document.getElementById('ig-content');
+  const hasRecentPosts=data.posts&&data.posts.length>0;
+
+  let postsHtml='';
+  if(hasRecentPosts){
+    const sorted=[...data.posts].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    postsHtml=`
+      <div class="chart-card" style="margin-bottom:12px">
+        <div class="chart-header"><div class="chart-title">Recent Posts</div><div class="chart-hint">last 12 · Graph API</div></div>
+        <table class="posts-table">
+          <thead><tr><th>Caption</th><th>Date</th><th>Type</th><th>Likes</th><th>Comments</th><th>Saves</th><th>Reach</th></tr></thead>
+          <tbody>${sorted.map(p=>`
+            <tr>
+              <td class="post-title">${p.caption?p.caption.slice(0,45)+'…':'(no caption)'}</td>
+              <td style="color:var(--muted);font-size:12px">${fmtDate(p.date)}</td>
+              <td style="color:var(--muted);font-size:12px">${(p.type||'—').replace('_',' ').toLowerCase()}</td>
+              <td style="font-family:var(--mono)">${fmtNum(p.likes)}</td>
+              <td style="font-family:var(--mono)">${fmtNum(p.comments)}</td>
+              <td style="font-family:var(--mono)">${fmtNum(p.saves)}</td>
+              <td style="font-family:var(--mono)">${fmtNum(p.reach)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else if(data.error){
+    postsHtml=`
+      <div class="state-card">
+        <div class="state-icon">⚠️</div>
+        <div class="state-title">Graph API error</div>
+        <div class="state-desc">${data.error}</div>
+      </div>`;
+  } else {
+    postsHtml=`
+      <div class="state-card">
+        <div class="state-icon">🗓️</div>
+        <div class="state-title">No posts found</div>
+        <div class="state-desc">No recent posts for <strong>@_juliettech</strong>. Post something and refresh.</div>
+      </div>`;
+  }
+
+  el.innerHTML=`
+    <div class="insight">📸 <strong>@${data.username||'_juliettech'}</strong> · data synced hourly via GitHub Actions → Vercel · history stored in <code style="font-family:var(--mono);font-size:11px">data/daily/</code></div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card">
+        <div class="kpi-label">Followers</div>
+        <div class="kpi-value" style="color:var(--pink)">${data.followers!=null?fmtNum(data.followers):'—'}</div>
+        <div class="kpi-sub">@_juliettech</div>
+        <div class="kpi-trend neutral">as of ${data.fetched||'today'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Media count</div>
+        <div class="kpi-value">${data.media_count!=null?fmtNum(data.media_count):'—'}</div>
+        <div class="kpi-sub">total posts</div>
+        <div class="kpi-trend neutral">Graph API</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Status</div>
+        <div class="kpi-value" style="font-size:16px;line-height:1.3">${data.error?'Error':'Live'}</div>
+        <div class="kpi-sub">Graph API · permanent token</div>
+        <div class="kpi-trend ${data.error?'down':'up'}">${data.error?'⚠ check console':'✓ Connected'}</div>
+      </div>
+    </div>
+    ${postsHtml}
+    <div class="info-box">
+      <div class="info-box-title">📊 What gets tracked</div>
+      <div class="info-box-sub">Followers · Media count · Likes · Comments · Saves · Reach per post · Media type</div>
+    </div>`;
+}
+
+// ════════════════════
+// LINKEDIN RENDER
+// ════════════════════
+function renderLinkedIn(pageKey){
+  const d=liData[pageKey];
+  const page=LI_PAGES[pageKey];
+  const el=document.getElementById('li-content');
+  if(!d){el.innerHTML='<div class="tab-loading">No data</div>';return;}
+
+  const erStr=d.engagement_rate!=null?`${d.engagement_rate.toFixed(2)}%`:'—';
+  const erClass=d.engagement_rate>=5?'up':d.engagement_rate>=2?'neutral':'down';
+  const isLive=!!LI_TOKEN;
+
+  el.innerHTML=`
+    <div class="page-tabs" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      ${Object.entries(LI_PAGES).map(([k,pg])=>`
+        <button onclick="setLinkedInPage('${k}')" style="padding:5px 12px;background:${k===pageKey?'var(--blue-light)':'var(--surface)'};border:1px solid ${k===pageKey?'var(--blue)':'var(--border)'};color:${k===pageKey?'var(--blue)':'var(--muted)'};border-radius:6px;cursor:pointer;font-size:12px;font-weight:500">${pg.name}</button>`).join('')}
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi-card">
+        <div class="kpi-label">Followers</div>
+        <div class="kpi-value" style="color:var(--blue)">${fmtNum(d.followers)}</div>
+        <div class="kpi-sub">${page.name}</div>
+        <div class="kpi-trend ${d.new_followers>0?'up':'neutral'}">+${d.new_followers||0} this month</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Impressions</div>
+        <div class="kpi-value">${fmtNum(d.impressions)}</div>
+        <div class="kpi-sub">30 days</div>
+        <div class="kpi-trend neutral">${isLive?'live':'seed data'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Engagements</div>
+        <div class="kpi-value">${fmtNum(d.engagements)}</div>
+        <div class="kpi-sub">30 days</div>
+        <div class="kpi-trend neutral">likes + shares + comments</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Eng. Rate</div>
+        <div class="kpi-value ${erClass}">${erStr}</div>
+        <div class="kpi-sub">30 days</div>
+        <div class="kpi-trend ${erClass}">${d.engagement_rate>=5?'↑ above avg (2%)':d.engagement_rate!=null?'→ track over time':''}</div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-header"><div class="chart-title">All Pages · Followers</div><div class="chart-hint">comparison</div></div>
+        <div style="padding:4px 0">${
+          Object.entries(LI_PAGES).map(([k,pg])=>{
+            const pd=liData[k];
+            const max=Math.max(...Object.values(liData).map(d=>d?.followers||0),1);
+            return `<div class="src-row">
+              <div class="src-label" style="width:150px">${pg.name.split(' ').slice(0,3).join(' ')}</div>
+              <div class="src-bg"><div class="src-fill" style="width:${((pd?.followers||0)/max*100).toFixed(0)}%;background:var(--blue)"></div></div>
+              <div class="src-count" style="width:40px">${fmtNum(pd?.followers)}</div>
+            </div>`;
+          }).join('')
+        }</div>
+      </div>
+      <div class="kpi-card" style="display:flex;flex-direction:column;justify-content:center;gap:10px">
+        <div class="kpi-label">30d Snapshot · ${page.name}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          ${['Likes','Comments','Shares'].map(label=>`
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">
+              <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px">${label}</div>
+              <div style="font-size:18px;font-weight:800;margin-top:4px">${fmtNum(d[label.toLowerCase()]||0)}</div>
+            </div>`).join('')}
+          <div style="background:var(--blue-light);border:1px solid #BFDBFE;border-radius:6px;padding:8px 10px">
+            <div style="font-size:11px;color:var(--blue);font-weight:600;text-transform:uppercase;letter-spacing:.6px">New Followers</div>
+            <div style="font-size:18px;font-weight:800;margin-top:4px;color:var(--blue)">+${d.new_followers||0}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ════════════════════
+// DATA LOADING
+// ════════════════════
+async function loadNewsletter(){
+  showLoading('Fetching Beehiiv data...');
+  try{
+    const [statsRes,postsRes]=await Promise.all([
+      window.cowork.callMcpTool(`${BEEHIIV}get_publication_stats`,{publication_id:PUB_ID,time_period:'last_12_months'}),
+      window.cowork.callMcpTool(`${BEEHIIV}list_posts`,{publication_id:PUB_ID,status:'published',per_page:5,order_by:'newest_first'})
+    ]);
+    const stats=parseResult(statsRes);
+    const postsData=parseResult(postsRes);
+    let posts=SEED_POSTS;
+    if(postsData?.posts?.length){
+      const batchRes=await window.cowork.callMcpTool(`${BEEHIIV}get_post_stats_batch`,{post_ids:postsData.posts.slice(0,5).map(p=>p.id)});
+      const batch=parseResult(batchRes);
+      if(batch?.posts?.length){
+        posts=batch.posts.map((ps,i)=>({
+          id:ps.post_id,
+          title:postsData.posts[i]?.title||'Untitled',
+          date:(postsData.posts[i]?.scheduled_at||'').split('T')[0]||new Date().toISOString().split('T')[0],
+          open_rate:ps.email?.open_rate||0, ctr:ps.email?.click_rate||0,
+          recipients:ps.email?.recipients||0, unsubs:ps.email?.unsubscribes||0
+        }));
+      }
+    }
+    if(stats){
+      saveSnapshot(stats,posts);
+      const{snapshots}=loadHistory();
+      renderNewsletter(snapshots,posts);
+      setStatus(`Newsletter live · ${posts.length} issues · ${snapshots.length} snapshot${snapshots.length!==1?'s':''}`);
+    } else { fallbackNewsletter('No data from API'); }
+  }catch(e){
+    console.warn('Newsletter fetch error',e);
+    fallbackNewsletter('Using cached data');
+  }
+  tabLoaded.newsletter=true;
+  hideLoading();
+}
+
+function fallbackNewsletter(msg){
+  const{snapshots,posts}=loadHistory();
+  renderNewsletter(snapshots,posts);
+  const latest=snapshots[snapshots.length-1];
+  document.getElementById('lastUpdated').textContent=`Cached ${fmtDate(latest.date)}`;
+  setStatus(msg);
+}
+
+// Desktop Commander curl helper — kept for LinkedIn (CORS workaround when LI_TOKEN is added)
+async function desktopCurl(url, headers={}){
+  const hFlags=Object.entries(headers).map(([k,v])=>`-H "${k}: ${v}"`).join(' ');
+  const cmd=`curl -s --max-time 10 ${hFlags} "${url}"`;
+  const r=await window.cowork.callMcpTool('mcp__Desktop_Commander__start_process',{command:cmd,timeout_ms:14000});
+  let raw='';
+  if(r?.structuredContent) raw=typeof r.structuredContent==='string'?r.structuredContent:JSON.stringify(r.structuredContent);
+  else if(r?.content?.[0]?.text) raw=r.content[0].text;
+  const m=raw.match(/\{[\s\S]*\}/);
+  if(!m) throw new Error('No JSON in curl response: '+raw.slice(0,120));
+  return JSON.parse(m[0]);
+}
+
+async function loadInstagram(){
+  showLoading('Fetching Instagram data...');
+  // Relative URL — same Vercel origin as dashboard. No CORS issues.
+  if(GH_IG_URL.includes('YOUR_GITHUB_USERNAME')){
+    igData={...SEED_IG, error:'Set your GitHub username in GH_IG_URL (see CONFIG section)'};
+    setStatus('Instagram: update GH_IG_URL with your GitHub username to connect');
+    renderInstagram();
+    tabLoaded.instagram=true;
+    hideLoading();
+    return;
+  }
+  try{
+    const r=await fetch(GH_IG_URL);
+    if(!r.ok) throw new Error(`GitHub data not found (HTTP ${r.status}) — run the workflow first`);
+    const data=await r.json();
+    igData={
+      username:    data.username||'_juliettech',
+      followers:   data.followers??null,
+      media_count: data.media_count??null,
+      posts:       data.posts||[],
+      fetched:     (data.fetched_at||'').slice(0,10)||'today',
+    };
+    setStatus(`Instagram · @${igData.username} · ${igData.posts.length} posts · synced ${igData.fetched}`);
+  }catch(e){
+    console.warn('Instagram fetch error',e);
+    igData={...SEED_IG, error:e.message};
+    setStatus('Instagram: '+e.message);
+  }
+  renderInstagram();
+  tabLoaded.instagram=true;
+  hideLoading();
+}
+
+async function loadLinkedIn(){
+  showLoading('Loading LinkedIn data...');
+  if(LI_TOKEN){
+    try{
+      const BASE='https://api.linkedin.com/v2';
+      const hdrs={'Authorization':`Bearer ${LI_TOKEN}`,'LinkedIn-Version':'202401'};
+      const results=[];
+      for(const [key,pg] of Object.entries(LI_PAGES)){
+        const [follData,statData]=await Promise.all([
+          desktopCurl(`${BASE}/networkSizes/${encodeURIComponent(pg.urn)}?edgeType=CompanyFollowedByMember`,hdrs),
+          desktopCurl(`${BASE}/organizationPageStatistics?q=organization&organization=${encodeURIComponent(pg.urn)}`,hdrs)
+        ]);
+        const totalStats=statData?.elements?.find(e=>!e.timeRange)||statData?.elements?.[0]||{};
+        results.push([key,{
+          followers:follData.firstDegreeSize??SEED_LI[key]?.followers,
+          new_followers:SEED_LI[key]?.new_followers??0,
+          impressions:totalStats?.totalPageStatistics?.views?.allPageViews?.pageViews??0,
+          engagements:totalStats?.totalPageStatistics?.clicks?.mobileCustomButtonClickCounts??0,
+          engagement_rate:null,
+          fetched:new Date().toISOString().split('T')[0]
+        }]);
+      }
+      liData=Object.fromEntries(results);
+      setStatus('LinkedIn live · 3 pages loaded');
+    }catch(e){
+      console.warn('LinkedIn API error',e);
+      liData={...SEED_LI};
+      setStatus('LinkedIn: API error · showing seed data');
+    }
+  } else {
+    liData={...SEED_LI};
+    setStatus('LinkedIn: add LI_TOKEN to enable live data');
+  }
+  renderLinkedIn(currentLiPage);
+  tabLoaded.linkedin=true;
+  hideLoading();
+}
+
+// ════════════════════
+// UI CONTROLS
+// ════════════════════
+function showLoading(msg){
+  document.getElementById('loadingPill').style.display='flex';
+  document.getElementById('loadingText').textContent=msg||'loading...';
+  document.getElementById('refreshBtn').disabled=true;
+}
+function hideLoading(){
+  document.getElementById('loadingPill').style.display='none';
+  document.getElementById('refreshBtn').disabled=false;
+  document.getElementById('lastUpdated').textContent=`Updated ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
+}
+function setStatus(msg){document.getElementById('statusText').textContent=msg}
+
+let activeTab='newsletter';
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`panel-${tab}`).classList.add('active');
+  activeTab=tab;
+  if(tab==='instagram'&&!tabLoaded.instagram) loadInstagram();
+  if(tab==='linkedin'&&!tabLoaded.linkedin) loadLinkedIn();
+}
+
+function setTimeframe(tf){
+  currentTimeframe=tf;
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`tf-${tf}`).classList.add('active');
+  applyTimeframe(tf,historySnaps);
+}
+
+function setLinkedInPage(key){
+  currentLiPage=key;
+  renderLinkedIn(key);
+}
+
+function refreshCurrentTab(){
+  tabLoaded[activeTab]=false;
+  if(activeTab==='newsletter') loadNewsletter();
+  else if(activeTab==='instagram') loadInstagram();
+  else if(activeTab==='linkedin') loadLinkedIn();
+}
+
+// ════════════════════
+// INIT
+// ════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  const{snapshots,posts}=loadHistory();
+  renderNewsletter(snapshots,posts);
+  setStatus('Loading live data...');
+  if(window.cowork?.callMcpTool){
+    loadNewsletter();
+  } else {
+    tabLoaded.newsletter=true;
+    setStatus('Showing seed data · no live connection');
+  }
+});
+</script>
+</body>
+</html>

@@ -11,5 +11,12 @@
         { "key": "Expires", "value": "0" }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/social-dashboard",
+      "destination": "/",
+      "permanent": true
+    }
   ]
 }
