@@ -51,11 +51,10 @@ jobs:
 
           # ── Profile ──────────────────────────────────────────────────────────
           profile = api_get(f'/{USER_ID}',
-                            fields='id,username,followers_count,media_count')
+                            fields='id,username,followers_count')
           followers   = profile.get('followers_count', 0)
-          media_count = profile.get('media_count', 0)
           username    = profile.get('username', '_juliettech')
-          print(f'@{username}: {followers:,} followers, {media_count} total posts')
+          print(f'@{username}: {followers:,} followers')
 
           # ── Recent media ─────────────────────────────────────────────────────
           media_resp = api_get(
@@ -93,7 +92,7 @@ jobs:
           full = {
               'username':    username,
               'followers':   followers,
-              'media_count': media_count,
+              'media_count': len(posts),   # derived from media list (media_count field deprecated)
               'posts':       posts,
               'fetched_at':  now,
           }
@@ -108,7 +107,7 @@ jobs:
           summary = {
               't':  now,
               'f':  followers,
-              'mc': media_count,
+              'mc': len(posts),
               'pc': len(posts),
               'tl': max((p['likes']    for p in posts), default=0),
               'tc': max((p['comments'] for p in posts), default=0),
