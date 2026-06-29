@@ -212,9 +212,12 @@ jobs:
                             optional=True,
                             metric='impressions,reach,replies,taps_forward,taps_back,exits',
                             period='lifetime')
-              for item in ins.get('data', []):
-                  if item['name'] in story:
-                      story[item['name']] = item.get('value') or 0
+              if ins.get('data'):
+                  for item in ins['data']:
+                      if item['name'] in story:
+                          story[item['name']] = item.get('value') or 0
+              else:
+                  print(f'    ⚠ story {sid}: insights empty — check stderr above for the API error (likely missing instagram_manage_insights permission)')
               active_stories.append(story)
               print(f'  {story["date"]} STORY: 👁 {story["impressions"]}  📍 {story["reach"]}  💬 {story["replies"]}  ➡ {story["taps_forward"]}  ⬅ {story["taps_back"]}  🚪 {story["exits"]}')
               if sid not in seen_ids:
