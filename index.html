@@ -142,6 +142,7 @@ body {
 .badge.FEED  { background:#DFF0FF; color:#003070; }
 .badge.IMAGE { background:#DFF0FF; color:#003070; }
 .badge.CAROUSEL_ALBUM { background:#E0FFE8; color:#005020; }
+.badge.STORY          { background:#FFF3D0; color:#7A4A00; }
 
 /* ── Insight pills ── */
 .pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
@@ -478,6 +479,53 @@ body {
           </thead>
           <tbody id="post-tbody"></tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stories Analytics -->
+  <div class="win">
+    <div class="win-title">
+      <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+      <div class="win-label">📱 Stories Analytics</div>
+      <div class="win-tag">stories.jsonl</div>
+    </div>
+    <div class="win-body">
+      <div id="stories-live-banner" style="display:none;background:#FFF3D0;border:1px solid #C89038;border-radius:3px;padding:6px 10px;margin-bottom:10px;font-size:11px;color:#7A4A00"></div>
+      <div class="kpi-row">
+        <div class="kpi accent-o"><div class="kpi-lbl">Stories Logged</div><div class="kpi-val" id="s-count">─</div><div class="kpi-sub">since tracking started</div></div>
+        <div class="kpi"><div class="kpi-lbl">Avg Impressions</div><div class="kpi-val" id="s-imp">─</div><div class="kpi-sub">per story</div></div>
+        <div class="kpi accent-g"><div class="kpi-lbl">Avg Reach</div><div class="kpi-val" id="s-reach">─</div><div class="kpi-sub">unique views</div></div>
+        <div class="kpi accent-r"><div class="kpi-lbl">Total Replies</div><div class="kpi-val" id="s-replies">─</div><div class="kpi-sub">all stories</div></div>
+        <div class="kpi accent-f"><div class="kpi-lbl">Avg Taps Fwd</div><div class="kpi-val" id="s-taps-fwd">─</div><div class="kpi-sub">skip-ahead signal</div></div>
+        <div class="kpi"><div class="kpi-lbl">Avg Exits</div><div class="kpi-val" id="s-exits">─</div><div class="kpi-sub">drop-off</div></div>
+      </div>
+      <div id="stories-empty" class="empty" style="display:none">
+        ⏳ No stories logged yet — data appears after the next sync captures a live story.
+      </div>
+      <div id="stories-data" style="display:none">
+        <div style="margin-top:12px">
+          <div class="sh">Impressions &amp; reach per story · most recent 30 · chronological</div>
+          <div class="chart-wrap" style="height:180px"><canvas id="chart-stories"></canvas></div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="sh">Story history · newest first</div>
+          <div class="scroll" style="max-height:260px">
+            <table class="tbl">
+              <thead><tr>
+                <th>Date</th>
+                <th>Impressions</th>
+                <th>Reach</th>
+                <th>Replies</th>
+                <th>Taps Fwd</th>
+                <th>Taps Back</th>
+                <th>Exits</th>
+                <th>Caption</th>
+              </tr></thead>
+              <tbody id="stories-tbody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1047,6 +1095,114 @@ document.querySelectorAll('.tbl th[data-col]').forEach(th => {
   });
 });
 
+/* ── Stories ── */
+const STORY_CLR = '#C89038';
+
+let storiesChart = null;
+
+function renderStories(stories, activeStories) {
+  // Live banner
+  const banner = document.getElementById('stories-live-banner');
+  if (activeStories.length > 0) {
+    const totalImp = activeStories.reduce((s, x) => s + (x.impressions || 0), 0);
+    banner.textContent = `📱 ${activeStories.length} active stor${activeStories.length === 1 ? 'y' : 'ies'} live right now · ${fmt(totalImp)} impressions so far`;
+    banner.style.display = 'block';
+  }
+
+  if (stories.length === 0) {
+    document.getElementById('stories-empty').style.display = 'block';
+    return;
+  }
+  document.getElementById('stories-data').style.display = 'block';
+
+  // KPIs
+  const count = stories.length;
+  const avgImp    = avg(stories, 'impressions');
+  const avgReach  = avg(stories, 'reach');
+  const totalReplies = stories.reduce((s, x) => s + (x.replies || 0), 0);
+  const avgFwd    = avg(stories, 'taps_forward');
+  const avgExits  = avg(stories, 'exits');
+
+  document.getElementById('s-count').textContent     = fmt(count);
+  document.getElementById('s-imp').textContent       = fmt(Math.round(avgImp));
+  document.getElementById('s-reach').textContent     = fmt(Math.round(avgReach));
+  document.getElementById('s-replies').textContent   = fmt(totalReplies);
+  document.getElementById('s-taps-fwd').textContent  = fmt(Math.round(avgFwd));
+  document.getElementById('s-exits').textContent     = fmt(Math.round(avgExits));
+
+  // Chart — last 30, chronological
+  const chartData = [...stories].sort((a, b) => a.timestamp < b.timestamp ? -1 : 1).slice(-30);
+  const labels    = chartData.map(s => s.date ? s.date.slice(5) : '');
+
+  if (storiesChart) { storiesChart.destroy(); storiesChart = null; }
+  storiesChart = new Chart(document.getElementById('chart-stories'), {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Impressions',
+          data: chartData.map(s => s.impressions || 0),
+          backgroundColor: STORY_CLR + 'CC',
+          borderColor: STORY_CLR,
+          borderWidth: 1,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Reach',
+          data: chartData.map(s => s.reach || 0),
+          borderColor: TEAL_CLR,
+          backgroundColor: TEAL_CLR + '30',
+          borderWidth: 2,
+          pointRadius: 2,
+          tension: 0.3,
+          yAxisID: 'y',
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, labels: { font: { size: 10 }, boxWidth: 10 } },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const s = chartData[items[0].dataIndex];
+              return s.date + (s.caption ? ' · ' + s.caption.slice(0, 40) : '');
+            },
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45 } },
+        y: { grid: { color: '#E8E0D040' }, ticks: { font: { size: 9 } }, min: 0 },
+      },
+    },
+  });
+
+  // Table — newest first
+  const maxImp = Math.max(...stories.map(s => s.impressions || 0), 1);
+  const sorted = [...stories].sort((a, b) => b.timestamp < a.timestamp ? -1 : 1);
+  document.getElementById('stories-tbody').innerHTML = sorted.map(s => {
+    const imp     = s.impressions || 0;
+    const exitPct = imp > 0 ? (s.exits || 0) / imp : 0;
+    return `<tr>
+      <td style="white-space:nowrap">${s.date || '─'}</td>
+      <td class="num">
+        ${fmt(imp)}
+        <div class="mbar"><div class="mbar-fill" style="width:${(imp/maxImp*100).toFixed(0)}%;background:${STORY_CLR}"></div></div>
+      </td>
+      <td class="num">${fmt(s.reach || 0)}</td>
+      <td class="num ${(s.replies || 0) > 0 ? 'hi' : ''}">${fmt(s.replies || 0)}</td>
+      <td class="num">${fmt(s.taps_forward || 0)}</td>
+      <td class="num">${fmt(s.taps_back || 0)}</td>
+      <td class="num ${exitPct > 0.3 ? 'lo' : ''}">${fmt(s.exits || 0)}</td>
+      <td><div class="caption-preview">${s.caption || '─'}</div></td>
+    </tr>`;
+  }).join('');
+}
+
 /* ═══════════════════════════════════════════════════
    BEEHIIV DATA (snapshot — updates manually for now)
 ═══════════════════════════════════════════════════ */
@@ -1266,6 +1422,18 @@ async function main() {
     renderFunnel(posts);
     renderInsights(posts);
     renderTable(posts);
+
+    let storiesLog = [];
+    try {
+      const sResp = await fetch('/data/stories.jsonl?_=' + ts);
+      if (sResp.ok) {
+        const sTxt = await sResp.text();
+        storiesLog = sTxt.trim().split('\n').filter(Boolean)
+          .map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+      }
+    } catch (_) {}
+    renderStories(storiesLog, latest.stories || []);
+
     renderNewsletter();
 
     document.getElementById('loading').style.display = 'none';

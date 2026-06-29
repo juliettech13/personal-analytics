@@ -169,10 +169,66 @@ jobs:
               reel_tag = f' ▶ {post["plays"]:,} plays' if post['plays'] else ''
               print(f'  {post["date"]} {post["product_type"]}: ❤ {post["likes"]}  💬 {post["comments"]}  🔁 {post["shares"]}  📊 {post["reach"]}  👤 {post["profile_visits"]}  ➕ {post["follows"]}{reel_tag}')
 
-          # ── Assemble output ───────────────────────────────────────────────────
           now   = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
           today = datetime.date.today().isoformat()
 
+          # ── Stories ──────────────────────────────────────────────────────────
+          stories_resp = api_get(
+              f'/{ig_user_id}/stories',
+              optional=True,
+              fields='id,caption,media_type,timestamp,permalink'
+          )
+          stories_raw = stories_resp.get('data', [])
+          print(f'\n{len(stories_raw)} active stor{"y" if len(stories_raw)==1 else "ies"}')
+
+          stories_log_path = pathlib.Path('data/stories.jsonl')
+          seen_ids = set()
+          if stories_log_path.exists():
+              for line in stories_log_path.read_text().splitlines():
+                  try:
+                      seen_ids.add(json.loads(line).get('id', ''))
+                  except Exception:
+                      pass
+
+          active_stories = []
+          new_story_records = []
+          for s in stories_raw:
+              sid = s['id']
+              story = {
+                  'id':           sid,
+                  'date':         s.get('timestamp', '')[:10],
+                  'timestamp':    s.get('timestamp', ''),
+                  'media_type':   s.get('media_type', ''),
+                  'caption':      (s.get('caption') or '')[:200],
+                  'url':          s.get('permalink', ''),
+                  'impressions':  0,
+                  'reach':        0,
+                  'replies':      0,
+                  'taps_forward': 0,
+                  'taps_back':    0,
+                  'exits':        0,
+              }
+              ins = api_get(f'/{sid}/insights',
+                            optional=True,
+                            metric='impressions,reach,replies,taps_forward,taps_back,exits',
+                            period='lifetime')
+              for item in ins.get('data', []):
+                  if item['name'] in story:
+                      story[item['name']] = item.get('value') or 0
+              active_stories.append(story)
+              print(f'  {story["date"]} STORY: 👁 {story["impressions"]}  📍 {story["reach"]}  💬 {story["replies"]}  ➡ {story["taps_forward"]}  ⬅ {story["taps_back"]}  🚪 {story["exits"]}')
+              if sid not in seen_ids:
+                  new_story_records.append({'sync_at': now, **story})
+
+          if new_story_records:
+              with open(stories_log_path, 'a') as f:
+                  for rec in new_story_records:
+                      f.write(json.dumps(rec) + '\n')
+              print(f'✓ Appended {len(new_story_records)} new stor{"y" if len(new_story_records)==1 else "ies"} to data/stories.jsonl')
+          else:
+              print('✓ No new stories to append')
+
+          # ── Assemble output ───────────────────────────────────────────────────
           full = {
               'username':        username,
               'followers':       followers,
@@ -182,6 +238,7 @@ jobs:
               'profile_pic':     profile_pic,
               'media_count':     len(posts),
               'posts':           posts,
+              'stories':         active_stories,
               'account_metrics': acct_metrics,   # 7-day account-wide totals
               'fetched_at':      now,
           }
