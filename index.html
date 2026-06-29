@@ -253,6 +253,13 @@ body {
   max-width:200px; overflow:hidden; text-overflow:ellipsis;
   white-space:nowrap; font-size:9px; color:#777;
 }
+
+/* ── Newsletter view ── */
+.nl-accent { color: #7048A0; }
+.kpi.accent-p .kpi-val { color: var(--purple); }
+.kpi.accent-t .kpi-val { color: var(--teal); }
+.nl-badge-hot  { display:inline-block; padding:1px 5px; border-radius:2px; font-size:8px; font-weight:bold; background:#FFE8D0; color:#803800; }
+.nl-badge-good { display:inline-block; padding:1px 5px; border-radius:2px; font-size:8px; font-weight:bold; background:#E0FFE8; color:#006030; }
 </style>
 </head>
 <body>
@@ -285,6 +292,9 @@ body {
   <div id="ticker-wrap">
     <span id="ticker-inner">⬛ NERD_SPLASH ANALYTICS v2.0 · POWERED BY INSTAGRAM GRAPH API v22.0 · UPDATING HOURLY · ⬛</span>
   </div>
+
+  <!-- IG View -->
+  <div id="view-ig">
 
   <!-- Profile Header Window -->
   <div class="win">
@@ -470,13 +480,140 @@ body {
     </div>
   </div>
 
+  </div><!-- /view-ig -->
+
+  <!-- Newsletter View -->
+  <div id="view-newsletter" style="display:none">
+
+    <!-- Newsletter Profile Header -->
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">📧 nerd_splash Newsletter · Beehiiv</div>
+        <div class="win-tag">newsletter.juliet.tech</div>
+      </div>
+      <div class="profile-head">
+        <div class="profile-avatar">📧</div>
+        <div>
+          <div class="profile-name">nerd_splash</div>
+          <div class="profile-handle">newsletter.juliet.tech</div>
+          <div class="profile-bio">Weekly dispatches on tech, money, and being a nerd in the world.</div>
+        </div>
+        <div class="profile-stats">
+          <div class="pstat"><div class="pstat-v">1,110</div><div class="pstat-l">Active Subs</div></div>
+          <div class="pstat"><div class="pstat-v">55.1%</div><div class="pstat-l">Avg Open</div></div>
+          <div class="pstat"><div class="pstat-v">7.1%</div><div class="pstat-l">Avg Click</div></div>
+          <div class="pstat"><div class="pstat-v">$22</div><div class="pstat-l">Earnings</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Newsletter KPIs -->
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">Performance Vitals · 13 Published Issues</div>
+      </div>
+      <div class="win-body sm">
+        <div class="kpi-row">
+          <div class="kpi accent-g"><div class="kpi-lbl">Active Subscribers</div><div class="kpi-val">1,110</div><div class="kpi-sub">all-time active</div></div>
+          <div class="kpi accent-r"><div class="kpi-lbl">Total New Subs</div><div class="kpi-val">1,321</div><div class="kpi-sub">all-time signups</div></div>
+          <div class="kpi"><div class="kpi-lbl">Churned</div><div class="kpi-val">211</div><div class="kpi-sub">all-time</div></div>
+          <div class="kpi accent-o"><div class="kpi-lbl">Avg Open Rate</div><div class="kpi-val">55.1%</div><div class="kpi-sub">industry avg ~21%</div></div>
+          <div class="kpi accent-t"><div class="kpi-lbl">Avg Click Rate</div><div class="kpi-val">7.1%</div><div class="kpi-sub">industry avg ~2%</div></div>
+          <div class="kpi accent-p"><div class="kpi-lbl">Revenue</div><div class="kpi-val">$22</div><div class="kpi-sub">all-time earnings</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="grid2">
+      <!-- Open Rate trend -->
+      <div class="win">
+        <div class="win-title">
+          <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+          <div class="win-label">📈 Open Rate by Issue</div>
+        </div>
+        <div class="win-body">
+          <div class="sh">Unique open rate % per published issue · dashed line = avg</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="nl-chart-open"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Acquisition Sources -->
+      <div class="win">
+        <div class="win-title">
+          <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+          <div class="win-label">🍩 Acquisition Sources</div>
+        </div>
+        <div class="win-body">
+          <div class="sh">How readers found the newsletter</div>
+          <div class="donut-wrap">
+            <div style="width:120px;height:120px;flex-shrink:0"><canvas id="nl-chart-src"></canvas></div>
+            <div class="donut-leg" id="nl-src-legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Click Rate Chart -->
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">🖱️ Click Rate by Issue</div>
+      </div>
+      <div class="win-body">
+        <div class="sh">Click rate % · high = strong CTA or topic resonance</div>
+        <div class="chart-wrap" style="height:160px"><canvas id="nl-chart-click"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Insights pills -->
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">🔍 Newsletter Insights</div>
+      </div>
+      <div class="win-body">
+        <div class="pills" id="nl-insight-pills"></div>
+      </div>
+    </div>
+
+    <!-- Issue Explorer Table -->
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">📋 Issue Explorer · 13 Issues</div>
+      </div>
+      <div class="win-body sm">
+        <div class="scroll">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Date</th>
+                <th>Sent</th>
+                <th>Open %</th>
+                <th>Click %</th>
+                <th>Web Views</th>
+                <th>Unsubs</th>
+              </tr>
+            </thead>
+            <tbody id="nl-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /view-newsletter -->
+
 </div><!-- /app -->
 
 <!-- Dock -->
 <div id="dock">
   <span style="font-size:9px;color:#999;margin-right:4px">GO TO:</span>
-  <button class="dock-btn active" id="dock-ig">📸 Instagram</button>
-  <button class="dock-btn" id="dock-nl">📰 Newsletter</button>
+  <button class="dock-btn active" id="dock-ig" data-view="ig">📸 Instagram</button>
+  <button class="dock-btn" id="dock-nl" data-view="newsletter">📰 Newsletter</button>
   <button class="dock-btn" id="dock-li">💼 LinkedIn</button>
   <button class="dock-btn" id="dock-tw">🐦 Twitter/X</button>
   <span style="width:1px;background:#ddd;height:20px;margin:0 4px"></span>
@@ -494,12 +631,20 @@ const LINKS = {
   twitter:    'https://x.com/_juliettech',             // your X/Twitter URL
 };
 
+function switchView(view) {
+  document.getElementById('view-ig').style.display         = view === 'ig'         ? 'block' : 'none';
+  document.getElementById('view-newsletter').style.display = view === 'newsletter' ? 'block' : 'none';
+  document.querySelectorAll('.dock-btn[data-view]').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+}
+
 function setupDock(username) {
   LINKS.instagram = `https://www.instagram.com/${username}/`;
-  document.getElementById('dock-ig').onclick = () => window.open(LINKS.instagram,  '_blank');
-  document.getElementById('dock-nl').onclick = () => window.open(LINKS.newsletter, '_blank');
-  document.getElementById('dock-li').onclick = () => window.open(LINKS.linkedin,   '_blank');
-  document.getElementById('dock-tw').onclick = () => window.open(LINKS.twitter,    '_blank');
+  document.getElementById('dock-ig').onclick = () => switchView('ig');
+  document.getElementById('dock-nl').onclick = () => switchView('newsletter');
+  document.getElementById('dock-li').onclick = () => window.open(LINKS.linkedin, '_blank');
+  document.getElementById('dock-tw').onclick = () => window.open(LINKS.twitter,  '_blank');
 }
 
 /* ═══════════════════════════════════════════════════
@@ -891,6 +1036,189 @@ document.querySelectorAll('.tbl th[data-col]').forEach(th => {
 });
 
 /* ═══════════════════════════════════════════════════
+   BEEHIIV DATA (snapshot — updates manually for now)
+═══════════════════════════════════════════════════ */
+const BEEHIIV = {
+  stats: {
+    active_subscribers: 1110,
+    total_new: 1321,
+    churned: 211,
+    open_rate: 55.11,
+    click_rate: 7.11,
+    earnings: 22,
+  },
+  sources: [
+    { name: 'Import',    count: 953 },
+    { name: 'Twitter',   count: 31  },
+    { name: 'Direct',    count: 31  },
+    { name: 'Instagram', count: 30  },
+    { name: 'Embed',     count: 22  },
+    { name: 'Other',     count: 54  },
+  ],
+  posts: [
+    { title: 'The Empire Strikes Back',                      date: '2026-06-25', recipients: 1055, open_rate: 48.54, click_rate: 1.40,  web_views: 162, unsubs: 5  },
+    { title: 'I built the room',                             date: '2026-06-04', recipients: 1024, open_rate: 53.50, click_rate: 8.22,  web_views: 43,  unsubs: 3  },
+    { title: 'The ROI of a good date',                       date: '2026-05-14', recipients: 1037, open_rate: 45.02, click_rate: 6.19,  web_views: 28,  unsubs: 13 },
+    { title: 'I think the web is dying',                     date: '2025-11-20', recipients: 1097, open_rate: 53.00, click_rate: 4.94,  web_views: 77,  unsubs: 9  },
+    { title: 'Hygene, why nots & conviction',                date: '2025-11-06', recipients: 1103, open_rate: 51.25, click_rate: 5.25,  web_views: 35,  unsubs: 9  },
+    { title: 'Money, grandmas, and scrappy batman',          date: '2025-09-18', recipients: 1112, open_rate: 53.63, click_rate: 5.52,  web_views: 56,  unsubs: 11 },
+    { title: '24 people. 3 days. 1st of 6.',                 date: '2025-09-04', recipients: 1115, open_rate: 53.89, click_rate: 1.41,  web_views: 32,  unsubs: 5  },
+    { title: "Life's greatest paradox",                      date: '2025-06-05', recipients: 1115, open_rate: 58.77, click_rate: 3.37,  web_views: 31,  unsubs: 4  },
+    { title: 'Self-driving cars & camping grounds',          date: '2025-04-17', recipients: 1123, open_rate: 57.38, click_rate: 5.05,  web_views: 40,  unsubs: 9  },
+    { title: "The post I almost didn't publish",             date: '2024-12-05', recipients: 1123, open_rate: 59.44, click_rate: 4.85,  web_views: 55,  unsubs: 3  },
+    { title: 'Holiday gift guide for nerds',                 date: '2024-11-28', recipients: 1112, open_rate: 54.14, click_rate: 21.04, web_views: 52,  unsubs: 3  },
+    { title: 'I got my heart broken',                        date: '2024-11-14', recipients: 1121, open_rate: 57.20, click_rate: 2.29,  web_views: 83,  unsubs: 9  },
+    { title: "Guys, we're the aliens",                       date: '2024-11-07', recipients: 1122, open_rate: 55.31, click_rate: 3.90,  web_views: 49,  unsubs: 3  },
+  ]
+};
+
+/* ── Newsletter Render ── */
+function renderNewsletter() {
+  const posts  = BEEHIIV.posts;
+  const avgOpen  = posts.reduce((s,p) => s + p.open_rate,  0) / posts.length;
+  const avgClick = posts.reduce((s,p) => s + p.click_rate, 0) / posts.length;
+
+  /* short labels */
+  const labels = posts.map(p => p.date.slice(5) + ' ' + p.title.slice(0,12) + '…');
+
+  /* open rate colors: green if above avg, amber if below */
+  const openColors = posts.map(p => p.open_rate >= avgOpen ? TEAL_CLR + 'CC' : GOLD_CLR + 'CC');
+
+  /* click rate: highlight outliers */
+  const clickColors = posts.map(p => p.click_rate > 10 ? REEL_CLR + 'CC' : PURP_CLR + 'CC');
+
+  /* Open rate chart */
+  new Chart(document.getElementById('nl-chart-open'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Open Rate %',
+          data: posts.map(p => +p.open_rate.toFixed(1)),
+          backgroundColor: openColors,
+          borderColor: openColors.map(c => c.slice(0,7)),
+          borderWidth: 1,
+          order: 2,
+        },
+        {
+          label: 'Avg (' + avgOpen.toFixed(1) + '%)',
+          data: posts.map(() => +avgOpen.toFixed(1)),
+          type: 'line',
+          borderColor: GOLD_CLR,
+          borderDash: [5, 3],
+          backgroundColor: 'transparent',
+          pointRadius: 0,
+          order: 1,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { boxWidth: 10, padding: 8 } },
+        tooltip: { callbacks: { label: i => `${i.dataset.label}: ${i.raw}%` } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 8 }, maxRotation: 45 } },
+        y: { grid: { color: '#E8E0D040' }, ticks: { callback: v => v + '%' }, min: 0, max: 80 }
+      }
+    }
+  });
+
+  /* Click rate chart */
+  new Chart(document.getElementById('nl-chart-click'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Click Rate %',
+        data: posts.map(p => +p.click_rate.toFixed(2)),
+        backgroundColor: clickColors,
+        borderColor: clickColors.map(c => c.slice(0,7)),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: i => `Click rate: ${i.raw}%` } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 8 }, maxRotation: 45 } },
+        y: { grid: { color: '#E8E0D040' }, ticks: { callback: v => v + '%' }, min: 0 }
+      }
+    }
+  });
+
+  /* Acquisition sources donut */
+  const srcColors = [FEED_CLR, REEL_CLR, GOLD_CLR, TEAL_CLR, PURP_CLR, '#888'];
+  new Chart(document.getElementById('nl-chart-src'), {
+    type: 'doughnut',
+    data: {
+      labels: BEEHIIV.sources.map(s => s.name),
+      datasets: [{
+        data: BEEHIIV.sources.map(s => s.count),
+        backgroundColor: srcColors,
+        borderWidth: 2, borderColor: '#F4EFE6'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => `${c.label}: ${c.raw}` } }
+      }
+    }
+  });
+  const total = BEEHIIV.sources.reduce((s,x) => s + x.count, 0);
+  document.getElementById('nl-src-legend').innerHTML = BEEHIIV.sources.map((s, i) => `
+    <div class="donut-leg-item">
+      <div class="donut-dot" style="background:${srcColors[i]}"></div>
+      <div><strong>${s.name}</strong> · ${s.count} (${Math.round(s.count/total*100)}%)</div>
+    </div>
+  `).join('');
+
+  /* Issue table */
+  const avgO = avgOpen;
+  const avgC = avgClick;
+  document.getElementById('nl-tbody').innerHTML = posts.map(p => {
+    const openCls  = p.open_rate  >= avgO * 1.1 ? 'hi' : p.open_rate  < avgO * 0.9 ? 'lo' : '';
+    const clickCls = p.click_rate >= avgC * 1.5 ? 'hi' : p.click_rate < avgC * 0.5 ? 'lo' : '';
+    const clickBadge = p.click_rate > 10 ? `<span class="nl-badge-hot">🔥 VIRAL</span>` :
+                       p.click_rate > avgC * 1.4 ? `<span class="nl-badge-good">✓ STRONG</span>` : '';
+    return `<tr>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px">${p.title}</td>
+      <td style="color:#888;font-size:9px">${p.date}</td>
+      <td class="num">${p.recipients.toLocaleString()}</td>
+      <td class="num ${openCls}">${p.open_rate.toFixed(1)}%</td>
+      <td class="num ${clickCls}">${p.click_rate.toFixed(2)}% ${clickBadge}</td>
+      <td class="num">${p.web_views}</td>
+      <td class="num ${p.unsubs >= 10 ? 'lo' : ''}">${p.unsubs}</td>
+    </tr>`;
+  }).join('');
+
+  /* Insights pills */
+  const pills = [];
+  const topOpen  = [...posts].sort((a,b) => b.open_rate  - a.open_rate )[0];
+  const topClick = [...posts].sort((a,b) => b.click_rate - a.click_rate)[0];
+  const lowUnsub = [...posts].sort((a,b) => a.unsubs     - b.unsubs    )[0];
+  const highUnsub= [...posts].sort((a,b) => b.unsubs     - a.unsubs    )[0];
+
+  pills.push({cls:'good', text:`Open rate ${avgOpen.toFixed(1)}% · 2.6× industry average of 21%`});
+  pills.push({cls:'good', text:`Click rate ${avgClick.toFixed(1)}% · 3.5× industry average of 2%`});
+  pills.push({cls:'hot',  text:`Top clicking issue: "${topClick.title}" at ${topClick.click_rate.toFixed(1)}% — study that CTA`});
+  pills.push({cls:'good', text:`Most-opened: "${topOpen.title}" at ${topOpen.open_rate.toFixed(1)}% open rate`});
+  if (highUnsub.unsubs >= 10) pills.push({cls:'warn', text:`Highest churn: "${highUnsub.title}" (${highUnsub.unsubs} unsubs) · review that issue's tone`});
+  pills.push({cls:'info',  text:`Top acquisition: Import (953 subs) + Instagram (30) — import drive was key`});
+  pills.push({cls:'info',  text:`Instagram sends ${BEEHIIV.sources.find(s=>s.name==='Instagram').count} subscribers — your IG↔newsletter funnel is working`});
+
+  document.getElementById('nl-insight-pills').innerHTML = pills.map(p =>
+    `<div class="pill ${p.cls}"><span>${p.text}</span></div>`
+  ).join('');
+}
+
+/* ═══════════════════════════════════════════════════
    MAIN
 ═══════════════════════════════════════════════════ */
 async function main() {
@@ -922,6 +1250,7 @@ async function main() {
     renderFunnel(posts);
     renderInsights(posts);
     renderTable(posts);
+    renderNewsletter();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
