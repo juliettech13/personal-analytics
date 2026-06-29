@@ -475,15 +475,33 @@ body {
 <!-- Dock -->
 <div id="dock">
   <span style="font-size:9px;color:#999;margin-right:4px">GO TO:</span>
-  <button class="dock-btn active">📸 Instagram</button>
-  <button class="dock-btn">📰 Newsletter</button>
-  <button class="dock-btn">💼 LinkedIn</button>
-  <button class="dock-btn">🐦 Twitter/X</button>
+  <button class="dock-btn active" id="dock-ig">📸 Instagram</button>
+  <button class="dock-btn" id="dock-nl">📰 Newsletter</button>
+  <button class="dock-btn" id="dock-li">💼 LinkedIn</button>
+  <button class="dock-btn" id="dock-tw">🐦 Twitter/X</button>
   <span style="width:1px;background:#ddd;height:20px;margin:0 4px"></span>
   <button class="dock-btn" onclick="location.reload()">↺ Refresh</button>
 </div>
 
 <script>
+/* ═══════════════════════════════════════════════════
+   SOCIAL LINKS CONFIG — fill in your handles/URLs
+═══════════════════════════════════════════════════ */
+const LINKS = {
+  instagram:  null,                                    // auto-set from API data
+  newsletter: 'https://nerd-splash.beehiiv.com',       // your Beehiiv URL
+  linkedin:   'https://www.linkedin.com/in/juliettech',// your LinkedIn URL
+  twitter:    'https://x.com/_juliettech',             // your X/Twitter URL
+};
+
+function setupDock(username) {
+  LINKS.instagram = `https://www.instagram.com/${username}/`;
+  document.getElementById('dock-ig').onclick = () => window.open(LINKS.instagram,  '_blank');
+  document.getElementById('dock-nl').onclick = () => window.open(LINKS.newsletter, '_blank');
+  document.getElementById('dock-li').onclick = () => window.open(LINKS.linkedin,   '_blank');
+  document.getElementById('dock-tw').onclick = () => window.open(LINKS.twitter,    '_blank');
+}
+
 /* ═══════════════════════════════════════════════════
    ANALYTICS ENGINE
 ═══════════════════════════════════════════════════ */
@@ -894,6 +912,7 @@ async function main() {
     const posts = enrich(latest.posts || []);
 
     renderProfile(latest, posts);
+    setupDock(latest.username || '_juliettech');
     renderKPIs(posts);
     renderGrowth(history);
     renderMix(posts);
