@@ -1,9 +1,9 @@
 name: Sync Instagram Analytics
 
-# Runs every hour — free on private repos (2,000 min/month limit; ~720 min/month used)
+# Runs every 6 hours (~120 min/month on free tier)
 on:
   schedule:
-    - cron: '0 * * * *'   # every hour, on the hour
+    - cron: '0 */6 * * *'   # every 6 hours
   workflow_dispatch:        # also triggerable manually from the Actions tab
 
 jobs:
@@ -287,15 +287,22 @@ jobs:
           EOF
 
       - name: Commit & push data
+        id: commit
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --staged --quiet && { echo "No changes to commit"; exit 0; }
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            echo "changed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           git commit -m "sync: instagram $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push
+          echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Trigger Vercel redeploy
+        if: steps.commit.outputs.changed == 'true'
         run: |
           curl -s -X POST "https://api.vercel.com/v1/integrations/deploy/prj_Y7szcybuyGGlF0iauy81gpFuvk7m/yuN128bzyc"
           echo "Vercel redeploy triggered"

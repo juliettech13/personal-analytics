@@ -55,8 +55,29 @@ body {
   font-size: 12px; z-index: 999; font-family: var(--body);
 }
 #menubar .logo { font-family: var(--serif); font-size: 14px; letter-spacing:.5px; }
-#menubar .menu-items { display:flex; gap:14px; color:#333; cursor:pointer; }
-#menubar .menu-items span:hover { text-decoration:underline; }
+#menubar .menu-items { display:flex; gap:2px; color:#333; cursor:pointer; font-family:var(--mono); }
+#menubar .menu-items span:hover { text-decoration:none; }
+
+/* ── Menubar dropdowns ── */
+.menu-item { position:relative; }
+.menu-item > span { padding:2px 8px; border-radius:3px; display:block; }
+.menu-item:hover > span, .menu-item.open > span { background:#2C2C2C; color:#fff; }
+.menu-dd {
+  display:none; position:absolute; top:calc(100% + 1px); left:0;
+  background:#F8F4EE; border:1px solid #bbb;
+  box-shadow:2px 3px 0 rgba(0,0,0,.15);
+  min-width:190px; padding:3px 0; z-index:1000;
+}
+.menu-item.open .menu-dd { display:block; }
+.menu-dd button, .menu-dd a {
+  display:block; width:100%; text-align:left; padding:4px 14px;
+  background:none; border:none; color:#222; cursor:pointer;
+  text-decoration:none; font-family:var(--mono); font-size:11px;
+  white-space:nowrap;
+}
+.menu-dd button:hover:not(:disabled), .menu-dd a:hover { background:#2C2C2C; color:#FFD060; }
+.menu-dd button:disabled { cursor:default; }
+.menu-dd-sep { height:1px; background:#ddd; margin:3px 0; }
 #menubar .menu-right { margin-left:auto; display:flex; align-items:center; gap:10px; color:#555; }
 .status-dot {
   width:7px; height:7px; border-radius:50%; background:#2CB840;
@@ -94,12 +115,13 @@ body {
 .btn-c { width:11px;height:11px;border-radius:50%;border:1px solid rgba(0,0,0,.3); }
 .btn-c.r{background:#FF5F57;} .btn-c.y{background:#FEBC2E;} .btn-c.g{background:#28C840;}
 .win-label {
-  flex:1; text-align:center; color:#fff; font-family:var(--body);
+  flex:1; text-align:center; color:#fff; font-family:var(--mono);
   font-size:11px; font-weight:600; letter-spacing:.8px; text-transform:uppercase;
 }
 .win-tag {
   background:rgba(255,255,255,.12); color:#ccc;
   font-size:8px; letter-spacing:.5px; padding:1px 5px; border-radius:2px;
+  font-family:var(--mono);
 }
 .win-body { padding:12px; }
 .win-body.sm { padding:10px; }
@@ -116,7 +138,7 @@ body {
   background:#fff; border:1px solid var(--border);
   border-radius:3px; padding:9px 10px; text-align:center;
 }
-.kpi-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:#888; margin-bottom:3px; font-weight:500; }
+.kpi-lbl { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:#888; margin-bottom:3px; font-weight:500; }
 .kpi-val { font-family:var(--pixel); font-size:30px; line-height:1; color:var(--dark); }
 .kpi-sub { font-size:10px; color:#aaa; margin-top:3px; }
 .kpi.accent-r .kpi-val{color:var(--reel-clr);}
@@ -126,7 +148,7 @@ body {
 
 /* ── Section header ── */
 .sh {
-  font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#999; font-weight:500;
+  font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#999; font-weight:500;
   border-bottom:1px solid var(--border); padding-bottom:4px; margin-bottom:10px;
 }
 
@@ -215,8 +237,8 @@ body {
   font-size:22px;
 }
 .profile-avatar img { width:100%; height:100%; object-fit:cover; }
-.profile-name { font-family:var(--serif); font-size:18px; color:#FFD060; line-height:1; }
-.profile-handle { font-size:10px; color:#ccc; margin-top:2px; }
+.profile-name { font-family:var(--pixel); font-size:26px; color:#FFD060; line-height:1; }
+.profile-handle { font-family:var(--mono); font-size:10px; color:#ccc; margin-top:2px; }
 .profile-bio { font-size:9px; color:#aaa; margin-top:4px; max-width:360px; }
 .profile-stats { display:flex; gap:16px; margin-left:auto; }
 .pstat { text-align:center; }
@@ -277,7 +299,42 @@ body {
 <div id="menubar">
   <span class="logo">nerd_splash</span>
   <div class="menu-items">
-    <span>File</span><span>View</span><span>Data</span><span>Help</span>
+    <div class="menu-item">
+      <span>File</span>
+      <div class="menu-dd">
+        <button onclick="document.getElementById('dl-data').click()">⬇ Export latest.json</button>
+        <a id="dl-data" href="/data/latest.json" download style="display:none"></a>
+        <div class="menu-dd-sep"></div>
+        <button onclick="window.print()">🖨 Print</button>
+      </div>
+    </div>
+    <div class="menu-item">
+      <span>View</span>
+      <div class="menu-dd">
+        <button onclick="switchView('ig')">📸 Instagram</button>
+        <button onclick="switchView('newsletter')">📰 Newsletter</button>
+        <div class="menu-dd-sep"></div>
+        <button disabled style="opacity:.4">💼 LinkedIn (soon)</button>
+        <button disabled style="opacity:.4">🐦 Twitter/X (soon)</button>
+      </div>
+    </div>
+    <div class="menu-item">
+      <span>Data</span>
+      <div class="menu-dd">
+        <button onclick="triggerSync()">↺ Sync now</button>
+        <div class="menu-dd-sep"></div>
+        <a href="/data/latest.json" target="_blank">📄 View latest.json</a>
+        <a href="/data/history.jsonl" target="_blank">📋 View history.jsonl</a>
+      </div>
+    </div>
+    <div class="menu-item">
+      <span>Help</span>
+      <div class="menu-dd">
+        <button onclick="analyzeWithClaude()">🤖 Analyze with Claude</button>
+        <div class="menu-dd-sep"></div>
+        <a href="https://github.com/juliettech13/personal-analytics" target="_blank">↗ View source</a>
+      </div>
+    </div>
   </div>
   <div class="menu-right">
     <span class="status-dot"></span>
@@ -668,7 +725,7 @@ body {
   <button class="dock-btn" id="dock-li">💼 LinkedIn</button>
   <button class="dock-btn" id="dock-tw">🐦 Twitter/X</button>
   <span style="width:1px;background:#ddd;height:20px;margin:0 4px"></span>
-  <button class="dock-btn" onclick="location.reload()">↺ Refresh</button>
+  <button class="dock-btn" id="btn-sync" onclick="triggerSync()">↺ Refresh</button>
 </div>
 
 <script>
@@ -683,6 +740,7 @@ const LINKS = {
 };
 
 function switchView(view) {
+  document.querySelectorAll('.menu-item.open').forEach(i => i.classList.remove('open'));
   document.getElementById('view-ig').style.display         = view === 'ig'         ? 'block' : 'none';
   document.getElementById('view-newsletter').style.display = view === 'newsletter' ? 'block' : 'none';
   document.querySelectorAll('.dock-btn[data-view]').forEach(b => {
@@ -1389,6 +1447,79 @@ function renderNewsletter() {
     `<div class="pill ${p.cls}"><span>${p.text}</span></div>`
   ).join('');
 }
+
+/* ═══════════════════════════════════════════════════
+   SYNC + ANALYZE ACTIONS
+═══════════════════════════════════════════════════ */
+async function triggerSync() {
+  document.querySelectorAll('.menu-item.open').forEach(i => i.classList.remove('open'));
+  const btn = document.getElementById('btn-sync');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = '⏳ syncing…'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/sync', { method: 'POST' });
+    if (r.status === 204) {
+      if (btn) btn.textContent = '✓ reload in 45s';
+      showToast('✓ Sync triggered — reloading in 45s');
+      setTimeout(() => location.reload(), 45000);
+    } else {
+      if (btn) { btn.textContent = `✗ error ${r.status}`; btn.disabled = false; }
+      showToast(`✗ Sync error: HTTP ${r.status}`);
+    }
+  } catch {
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+    showToast('✗ Network error — is this running on Vercel?');
+  }
+}
+
+function analyzeWithClaude() {
+  document.querySelectorAll('.menu-item.open').forEach(i => i.classList.remove('open'));
+  const name      = document.getElementById('ph-name')?.textContent?.trim() || '';
+  const followers = document.getElementById('ph-f')?.textContent?.trim() || '?';
+  const engRate   = document.getElementById('ph-er')?.textContent?.trim() || '?';
+  const top5 = [...tableData].sort((a, b) => (b.reach || 0) - (a.reach || 0)).slice(0, 5);
+  const igBlock = `INSTAGRAM (@${name})\nFollowers: ${followers} | Avg engagement rate: ${engRate}\n\nTop 5 posts by reach:\n`
+    + top5.map((p, i) =>
+        `  ${i + 1}. [${p.product_type}] ${p.date}  reach:${p.reach}  likes:${p.likes}  saves:${p.saves || 0}  shares:${p.shares || 0}\n     "${(p.caption || '').slice(0, 100)}"`
+      ).join('\n');
+
+  const s = BEEHIIV.stats;
+  const nlBlock = `NEWSLETTER\nActive subscribers: ${s.active_subscribers} | Avg open rate: ${s.open_rate}% | Avg click rate: ${s.click_rate}%`;
+
+  const prompt = `Here is my personal analytics data. Please give me 5 specific, actionable recommendations to grow my audience and improve engagement.\n\n${igBlock}\n\n${nlBlock}`;
+
+  navigator.clipboard.writeText(prompt)
+    .then(() => showToast('📋 Copied! Open Claude and paste.'))
+    .catch(() => showToast('⚠ Clipboard blocked — check browser permissions'));
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position: 'fixed', bottom: '70px', left: '50%', transform: 'translateX(-50%)',
+    background: '#2C2C2C', color: '#FFD060', padding: '8px 18px',
+    border: '1px solid #555', fontFamily: 'var(--mono)', fontSize: '11px',
+    zIndex: '9999', pointerEvents: 'none', whiteSpace: 'nowrap',
+  });
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+/* ── Menubar dropdown toggle ── */
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.menu-item').forEach(item => {
+    item.querySelector('span').addEventListener('click', e => {
+      e.stopPropagation();
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.menu-item.open').forEach(i => i.classList.remove('open'));
+      if (!isOpen) item.classList.add('open');
+    });
+  });
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.menu-item.open').forEach(i => i.classList.remove('open'));
+  });
+});
 
 /* ═══════════════════════════════════════════════════
    MAIN
