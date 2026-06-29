@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>nerd_splash · analytics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Special+Elite&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=VT323&family=Share+Tech+Mono&family=Special+Elite&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════
@@ -24,6 +24,7 @@
   --purple:    #7048A0;
   --reel-clr:  #C84860;
   --feed-clr:  #3A6890;
+  --body:      'Inter', system-ui, -apple-system, sans-serif;
   --mono:      'Share Tech Mono', 'Courier New', monospace;
   --pixel:     'VT323', monospace;
   --serif:     'Special Elite', Georgia, serif;
@@ -38,8 +39,8 @@ body {
     radial-gradient(ellipse at 80% 90%, rgba(180,140,200,.25) 0%, transparent 55%),
     url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='1' fill='%23ffffff' fill-opacity='0.12'/%3E%3C/svg%3E");
   min-height: 100vh;
-  font-family: var(--mono);
-  font-size: 11px;
+  font-family: var(--body);
+  font-size: 13px;
   color: var(--dark);
   padding: 28px 14px 80px;
 }
@@ -47,13 +48,13 @@ body {
 /* ── Menubar ── */
 #menubar {
   position: fixed; top: 0; left: 0; right: 0;
-  height: 22px;
+  height: 24px;
   background: linear-gradient(180deg,#F8F4EE 0%,#E8E2D8 100%);
   border-bottom: 1px solid #bbb;
   display: flex; align-items: center; padding: 0 10px; gap: 18px;
-  font-size: 11px; z-index: 999;
+  font-size: 12px; z-index: 999; font-family: var(--body);
 }
-#menubar .logo { font-family: var(--serif); font-size: 13px; letter-spacing:.5px; }
+#menubar .logo { font-family: var(--serif); font-size: 14px; letter-spacing:.5px; }
 #menubar .menu-items { display:flex; gap:14px; color:#333; cursor:pointer; }
 #menubar .menu-items span:hover { text-decoration:underline; }
 #menubar .menu-right { margin-left:auto; display:flex; align-items:center; gap:10px; color:#555; }
@@ -93,8 +94,8 @@ body {
 .btn-c { width:11px;height:11px;border-radius:50%;border:1px solid rgba(0,0,0,.3); }
 .btn-c.r{background:#FF5F57;} .btn-c.y{background:#FEBC2E;} .btn-c.g{background:#28C840;}
 .win-label {
-  flex:1; text-align:center; color:#fff; font-family:var(--mono);
-  font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+  flex:1; text-align:center; color:#fff; font-family:var(--body);
+  font-size:11px; font-weight:600; letter-spacing:.8px; text-transform:uppercase;
 }
 .win-tag {
   background:rgba(255,255,255,.12); color:#ccc;
@@ -115,9 +116,9 @@ body {
   background:#fff; border:1px solid var(--border);
   border-radius:3px; padding:9px 10px; text-align:center;
 }
-.kpi-lbl { font-size:8px; text-transform:uppercase; letter-spacing:1.2px; color:#999; margin-bottom:3px; }
-.kpi-val { font-family:var(--pixel); font-size:28px; line-height:1; color:var(--dark); }
-.kpi-sub { font-size:8px; color:#bbb; margin-top:2px; }
+.kpi-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:#888; margin-bottom:3px; font-weight:500; }
+.kpi-val { font-family:var(--pixel); font-size:30px; line-height:1; color:var(--dark); }
+.kpi-sub { font-size:10px; color:#aaa; margin-top:3px; }
 .kpi.accent-r .kpi-val{color:var(--reel-clr);}
 .kpi.accent-f .kpi-val{color:var(--feed-clr);}
 .kpi.accent-g .kpi-val{color:var(--teal);}
@@ -125,7 +126,7 @@ body {
 
 /* ── Section header ── */
 .sh {
-  font-size:8px; text-transform:uppercase; letter-spacing:1.8px; color:#999;
+  font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#999; font-weight:500;
   border-bottom:1px solid var(--border); padding-bottom:4px; margin-bottom:10px;
 }
 
@@ -134,8 +135,8 @@ body {
 
 /* ── Type badge ── */
 .badge {
-  display:inline-block; padding:1px 5px; border-radius:2px;
-  font-size:8px; font-weight:bold; text-transform:uppercase; letter-spacing:.5px;
+  display:inline-block; padding:2px 6px; border-radius:2px;
+  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px;
 }
 .badge.REELS { background:#FFE0E8; color:#9A0030; }
 .badge.FEED  { background:#DFF0FF; color:#003070; }
@@ -145,7 +146,7 @@ body {
 /* ── Insight pills ── */
 .pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
 .pill {
-  padding:3px 9px; border-radius:10px; font-size:9px; letter-spacing:.4px;
+  padding:3px 9px; border-radius:10px; font-size:11px; letter-spacing:.3px;
   border:1px solid; display:flex; align-items:center; gap:4px;
 }
 .pill.good { background:#E8F8EE; border-color:#3A8C60; color:#1A5C38; }
@@ -154,10 +155,10 @@ body {
 .pill.hot  { background:#FFE8E8; border-color:#C84848; color:#800020; }
 
 /* ── Table ── */
-.tbl { width:100%; border-collapse:collapse; font-size:10px; }
+.tbl { width:100%; border-collapse:collapse; font-size:12px; }
 .tbl th {
   background:#2C2C2C; color:#F0E8D8; padding:5px 7px;
-  text-align:left; font-size:8px; letter-spacing:.8px; text-transform:uppercase;
+  text-align:left; font-size:10px; letter-spacing:.7px; text-transform:uppercase;
   cursor:pointer; user-select:none; white-space:nowrap;
 }
 .tbl th:hover { background:#444; }
@@ -168,7 +169,7 @@ body {
 }
 .tbl tr:nth-child(even) td { background:#EDE7DC; }
 .tbl tr:hover td { background:#D8EEF8; }
-.tbl td.num { text-align:right; font-family:var(--pixel); font-size:13px; }
+.tbl td.num { text-align:right; font-family:var(--pixel); font-size:15px; }
 .tbl td.hi  { color:var(--teal); font-weight:bold; }
 .tbl td.lo  { color:#bbb; }
 
@@ -180,18 +181,18 @@ body {
 .mbar-fill { height:100%; border-radius:1px; }
 
 /* ── Comparison table ── */
-.cmp { width:100%; border-collapse:collapse; font-size:10px; }
-.cmp th { text-align:center; padding:4px 8px; font-size:8px; text-transform:uppercase; letter-spacing:.8px; color:#888; }
+.cmp { width:100%; border-collapse:collapse; font-size:11px; }
+.cmp th { text-align:center; padding:4px 8px; font-size:10px; text-transform:uppercase; letter-spacing:.7px; color:#888; }
 .cmp td { text-align:center; padding:6px 8px; border-top:1px solid var(--border); }
-.cmp td:first-child { text-align:left; color:#888; font-size:9px; }
-.cmp .reel-col { color:var(--reel-clr); font-family:var(--pixel); font-size:16px; }
-.cmp .feed-col { color:var(--feed-clr); font-family:var(--pixel); font-size:16px; }
+.cmp td:first-child { text-align:left; color:#888; font-size:11px; }
+.cmp .reel-col { color:var(--reel-clr); font-family:var(--pixel); font-size:18px; }
+.cmp .feed-col { color:var(--feed-clr); font-family:var(--pixel); font-size:18px; }
 .cmp .winner { font-size:10px; }
 
 /* ── Donut legend ── */
 .donut-wrap { display:flex; align-items:center; gap:16px; }
 .donut-leg { flex:1; }
-.donut-leg-item { display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size:10px; }
+.donut-leg-item { display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size:12px; }
 .donut-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
 
 /* ── Scrollable ── */
@@ -472,6 +473,7 @@ body {
               <th data-col="eng_rate">Eng. Rate ↕</th>
               <th data-col="save_rate">Save Rate ↕</th>
               <th>Caption</th>
+              <th>Link</th>
             </tr>
           </thead>
           <tbody id="post-tbody"></tbody>
@@ -597,6 +599,7 @@ body {
                 <th>Click %</th>
                 <th>Web Views</th>
                 <th>Unsubs</th>
+                <th>Link</th>
               </tr>
             </thead>
             <tbody id="nl-tbody"></tbody>
@@ -854,7 +857,7 @@ function renderReach(posts) {
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false},
         tooltip:{callbacks:{
-          title:(items) => { const p=sorted[items[0].dataIndex]; return `${p.date} · ${p.product_type}`; },
+          title:(items) => { const p=sorted[items[0].dataIndex]; const cap=(p.caption||'').slice(0,50); return [`${p.date} · ${p.product_type}`, cap ? `"${cap}${cap.length>=50?'…':''}"` : '']; },
           label:(item)  => item.datasetIndex===0 ? `Reach: ${fmt(item.raw)}` : `Eng. Rate: ${pct(item.raw)}`,
         }}
       },
@@ -882,7 +885,12 @@ function renderSignals(posts) {
     },
     options:{
       responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:true,position:'top',labels:{boxWidth:10,padding:8}}},
+      plugins:{
+        legend:{display:true,position:'top',labels:{boxWidth:10,padding:8}},
+        tooltip:{callbacks:{
+          title:(items) => { const p=top15[items[0].dataIndex]; const cap=(p.caption||'').slice(0,50); return [`${p.date} · ${p.product_type}`, cap ? `"${cap}${cap.length>=50?'…':''}"` : '']; },
+        }}
+      },
       scales:{
         x:{stacked:true, grid:{display:false}, ticks:{font:{size:9},maxRotation:45}},
         y:{stacked:true, grid:{color:'#E8E0D040'}}
@@ -932,7 +940,7 @@ function renderInsights(posts) {
   }
 
   const topPost = [...posts].sort((a,b)=>(b.reach||0)-(a.reach||0))[0];
-  if (topPost) pills.push({cls:'good', text:`Top post: ${topPost.date} · ${topPost.product_type} · ${fmt(topPost.reach)} reach`});
+  if (topPost) { const cap=(topPost.caption||'').slice(0,35); pills.push({cls:'good', text:`Top post: ${topPost.date} · ${topPost.product_type} · ${fmt(topPost.reach)} reach${cap?` — "${cap}${cap.length>=35?'…':''}"`:''}` }); }
 
   if (avgSaveR > 1) pills.push({cls:'good', text:`Strong save rate ${pct(avgSaveR)} · audience finds content worth bookmarking`});
   if (avgSaveR < 0.5) pills.push({cls:'warn', text:`Low save rate ${pct(avgSaveR)} · try more actionable or educational content`});
@@ -941,7 +949,7 @@ function renderInsights(posts) {
   if (highEr.length) pills.push({cls:'hot', text:`${highEr.length} posts at 1.5× avg eng. rate — study what made them pop`});
 
   const topFollowPost = [...posts].sort((a,b)=>(b.follows||0)-(a.follows||0))[0];
-  if (topFollowPost?.follows > 0) pills.push({cls:'good', text:`Best follow-driver: ${topFollowPost.date} (${topFollowPost.follows} follows) · ${topFollowPost.product_type}`});
+  if (topFollowPost?.follows > 0) { const cap=(topFollowPost.caption||'').slice(0,35); pills.push({cls:'good', text:`Best follow-driver: ${topFollowPost.date} · ${topFollowPost.follows} follows${cap?` — "${cap}${cap.length>=35?'…':''}"`:''}` }); }
 
   const highReach = posts.filter(p => p.reach > avgReach * 1.5);
   if (highReach.length) pills.push({cls:'info', text:`${highReach.length} posts exceeded 1.5× avg reach — analyze for patterns`});
@@ -950,30 +958,33 @@ function renderInsights(posts) {
     `<div class="pill ${p.cls}"><span>${p.text}</span></div>`
   ).join('');
 
+  function insightRow(p, valHtml) {
+    const cap = (p.caption||'').slice(0,40);
+    const link = p.url ? `<a href="${p.url}" target="_blank" style="color:inherit;text-decoration:none;opacity:.6;font-size:10px;margin-left:4px" title="Open post">↗</a>` : '';
+    return `<div style="padding:5px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:10px">${p.date} <span class="badge ${p.product_type}">${p.product_type}</span>${link}</span>
+        ${valHtml}
+      </div>
+      ${cap ? `<div style="font-size:10px;color:#888;margin-top:2px;font-style:italic">"${cap}${cap.length>=40?'…':''}"</div>` : ''}
+    </div>`;
+  }
+
   const cards = [
     {
       title:'📊 Top 5 by Reach',
       rows: [...posts].sort((a,b)=>(b.reach||0)-(a.reach||0)).slice(0,5)
-        .map(p => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:9px">
-          <span>${p.date} <span class="badge ${p.product_type}">${p.product_type}</span></span>
-          <span style="font-family:var(--pixel);font-size:14px;color:var(--teal)">${fmt(p.reach)}</span>
-        </div>`).join('')
+        .map(p => insightRow(p, `<span style="font-family:var(--pixel);font-size:16px;color:var(--teal)">${fmt(p.reach)}</span>`)).join('')
     },
     {
       title:'💾 Top 5 by Saves',
       rows: [...posts].sort((a,b)=>(b.saves||0)-(a.saves||0)).slice(0,5)
-        .map(p => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:9px">
-          <span>${p.date} <span class="badge ${p.product_type}">${p.product_type}</span></span>
-          <span style="font-family:var(--pixel);font-size:14px;color:var(--reel-clr)">${fmt(p.saves)}</span>
-        </div>`).join('')
+        .map(p => insightRow(p, `<span style="font-family:var(--pixel);font-size:16px;color:var(--reel-clr)">${fmt(p.saves)}</span>`)).join('')
     },
     {
       title:'➕ Top 5 Follow Drivers',
       rows: [...posts].sort((a,b)=>(b.follows||0)-(a.follows||0)).slice(0,5)
-        .map(p => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:9px">
-          <span>${p.date} <span class="badge ${p.product_type}">${p.product_type}</span></span>
-          <span style="font-family:var(--pixel);font-size:14px;color:var(--gold)">${fmt(p.follows)}</span>
-        </div>`).join('')
+        .map(p => insightRow(p, `<span style="font-family:var(--pixel);font-size:16px;color:var(--gold)">${fmt(p.follows)}</span>`)).join('')
     }
   ];
 
@@ -1006,7 +1017,7 @@ function sortTable() {
   const avgR = avg(tableData,'reach');
   document.getElementById('post-tbody').innerHTML = sorted.map(p => `
     <tr>
-      <td><a href="${p.url||'#'}" target="_blank" style="color:inherit;text-decoration:none">${p.date}</a></td>
+      <td style="white-space:nowrap">${p.date}</td>
       <td><span class="badge ${p.product_type}">${p.product_type}</span></td>
       <td class="num ${(p.reach||0)>avgR*1.2?'hi':''}">
         ${fmt(p.reach)}
@@ -1020,7 +1031,8 @@ function sortTable() {
       <td class="num ${(p.follows||0)>0?'hi':''}">${fmt(p.follows)}</td>
       <td class="num ${(p.eng_rate||0)>5?'hi':(p.eng_rate||0)<1?'lo':''}">${pct(p.eng_rate)}</td>
       <td class="num">${pct(p.save_rate)}</td>
-      <td><div class="caption-preview" title="${(p.caption||'').replace(/"/g,"'")}">${p.caption||'─'}</div></td>
+      <td>${p.url ? `<a href="${p.url}" target="_blank" style="color:inherit;text-decoration:none"><div class="caption-preview" title="${(p.caption||'').replace(/"/g,"'")}">${p.caption||'─'}</div></a>` : `<div class="caption-preview">${p.caption||'─'}</div>`}</td>
+      <td style="text-align:center">${p.url ? `<a href="${p.url}" target="_blank" style="background:#2C2C2C;color:#FFD060;padding:2px 7px;border-radius:3px;text-decoration:none;font-size:11px;white-space:nowrap">↗ View</a>` : '─'}</td>
     </tr>
   `).join('');
 }
@@ -1056,19 +1068,19 @@ const BEEHIIV = {
     { name: 'Other',     count: 54  },
   ],
   posts: [
-    { title: 'The Empire Strikes Back',                      date: '2026-06-25', recipients: 1055, open_rate: 48.54, click_rate: 1.40,  web_views: 162, unsubs: 5  },
-    { title: 'I built the room',                             date: '2026-06-04', recipients: 1024, open_rate: 53.50, click_rate: 8.22,  web_views: 43,  unsubs: 3  },
-    { title: 'The ROI of a good date',                       date: '2026-05-14', recipients: 1037, open_rate: 45.02, click_rate: 6.19,  web_views: 28,  unsubs: 13 },
-    { title: 'I think the web is dying',                     date: '2025-11-20', recipients: 1097, open_rate: 53.00, click_rate: 4.94,  web_views: 77,  unsubs: 9  },
-    { title: 'Hygene, why nots & conviction',                date: '2025-11-06', recipients: 1103, open_rate: 51.25, click_rate: 5.25,  web_views: 35,  unsubs: 9  },
-    { title: 'Money, grandmas, and scrappy batman',          date: '2025-09-18', recipients: 1112, open_rate: 53.63, click_rate: 5.52,  web_views: 56,  unsubs: 11 },
-    { title: '24 people. 3 days. 1st of 6.',                 date: '2025-09-04', recipients: 1115, open_rate: 53.89, click_rate: 1.41,  web_views: 32,  unsubs: 5  },
-    { title: "Life's greatest paradox",                      date: '2025-06-05', recipients: 1115, open_rate: 58.77, click_rate: 3.37,  web_views: 31,  unsubs: 4  },
-    { title: 'Self-driving cars & camping grounds',          date: '2025-04-17', recipients: 1123, open_rate: 57.38, click_rate: 5.05,  web_views: 40,  unsubs: 9  },
-    { title: "The post I almost didn't publish",             date: '2024-12-05', recipients: 1123, open_rate: 59.44, click_rate: 4.85,  web_views: 55,  unsubs: 3  },
-    { title: 'Holiday gift guide for nerds',                 date: '2024-11-28', recipients: 1112, open_rate: 54.14, click_rate: 21.04, web_views: 52,  unsubs: 3  },
-    { title: 'I got my heart broken',                        date: '2024-11-14', recipients: 1121, open_rate: 57.20, click_rate: 2.29,  web_views: 83,  unsubs: 9  },
-    { title: "Guys, we're the aliens",                       date: '2024-11-07', recipients: 1122, open_rate: 55.31, click_rate: 3.90,  web_views: 49,  unsubs: 3  },
+    { title: 'The Empire Strikes Back',                      date: '2026-06-25', recipients: 1055, open_rate: 48.54, click_rate: 1.40,  web_views: 162, unsubs: 5,  url: 'https://newsletter.juliet.tech/p/the-empire-strikes-back' },
+    { title: 'I built the room',                             date: '2026-06-04', recipients: 1024, open_rate: 53.50, click_rate: 8.22,  web_views: 43,  unsubs: 3,  url: 'https://newsletter.juliet.tech/p/i-built-the-room' },
+    { title: 'The ROI of a good date',                       date: '2026-05-14', recipients: 1037, open_rate: 45.02, click_rate: 6.19,  web_views: 28,  unsubs: 13, url: 'https://newsletter.juliet.tech/p/the-roi-of-a-good-date' },
+    { title: 'I think the web is dying',                     date: '2025-11-20', recipients: 1097, open_rate: 53.00, click_rate: 4.94,  web_views: 77,  unsubs: 9,  url: 'https://newsletter.juliet.tech/p/i-think-the-web-is-dying' },
+    { title: 'Hygene, why nots & conviction',                date: '2025-11-06', recipients: 1103, open_rate: 51.25, click_rate: 5.25,  web_views: 35,  unsubs: 9,  url: 'https://newsletter.juliet.tech/p/hygene-why-nots-and-conviction' },
+    { title: 'Money, grandmas, and scrappy batman',          date: '2025-09-18', recipients: 1112, open_rate: 53.63, click_rate: 5.52,  web_views: 56,  unsubs: 11, url: 'https://newsletter.juliet.tech/p/money-grandmas-and-scrappy-batman' },
+    { title: '24 people. 3 days. 1st of 6.',                 date: '2025-09-04', recipients: 1115, open_rate: 53.89, click_rate: 1.41,  web_views: 32,  unsubs: 5,  url: 'https://newsletter.juliet.tech/p/24-people-3-days-1st-of-6' },
+    { title: "Life's greatest paradox",                      date: '2025-06-05', recipients: 1115, open_rate: 58.77, click_rate: 3.37,  web_views: 31,  unsubs: 4,  url: "https://newsletter.juliet.tech/p/lifes-greatest-paradox" },
+    { title: 'Self-driving cars & camping grounds',          date: '2025-04-17', recipients: 1123, open_rate: 57.38, click_rate: 5.05,  web_views: 40,  unsubs: 9,  url: 'https://newsletter.juliet.tech/p/self-driving-cars-and-camping-grounds' },
+    { title: "The post I almost didn't publish",             date: '2024-12-05', recipients: 1123, open_rate: 59.44, click_rate: 4.85,  web_views: 55,  unsubs: 3,  url: "https://newsletter.juliet.tech/p/the-post-i-almost-didnt-publish" },
+    { title: 'Holiday gift guide for nerds',                 date: '2024-11-28', recipients: 1112, open_rate: 54.14, click_rate: 21.04, web_views: 52,  unsubs: 3,  url: 'https://newsletter.juliet.tech/p/holiday-gift-guide-for-nerds' },
+    { title: 'I got my heart broken',                        date: '2024-11-14', recipients: 1121, open_rate: 57.20, click_rate: 2.29,  web_views: 83,  unsubs: 9,  url: 'https://newsletter.juliet.tech/p/i-got-my-heart-broken' },
+    { title: "Guys, we're the aliens",                       date: '2024-11-07', recipients: 1122, open_rate: 55.31, click_rate: 3.90,  web_views: 49,  unsubs: 3,  url: "https://newsletter.juliet.tech/p/guys-were-the-aliens" },
   ]
 };
 
@@ -1187,14 +1199,18 @@ function renderNewsletter() {
     const clickCls = p.click_rate >= avgC * 1.5 ? 'hi' : p.click_rate < avgC * 0.5 ? 'lo' : '';
     const clickBadge = p.click_rate > 10 ? `<span class="nl-badge-hot">🔥 VIRAL</span>` :
                        p.click_rate > avgC * 1.4 ? `<span class="nl-badge-good">✓ STRONG</span>` : '';
+    const titleCell = p.url
+      ? `<a href="${p.url}" target="_blank" style="color:inherit;text-decoration:none" title="Open issue">${p.title}</a>`
+      : p.title;
     return `<tr>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px">${p.title}</td>
-      <td style="color:#888;font-size:9px">${p.date}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${titleCell}</td>
+      <td style="color:#888;white-space:nowrap">${p.date}</td>
       <td class="num">${p.recipients.toLocaleString()}</td>
       <td class="num ${openCls}">${p.open_rate.toFixed(1)}%</td>
       <td class="num ${clickCls}">${p.click_rate.toFixed(2)}% ${clickBadge}</td>
       <td class="num">${p.web_views}</td>
       <td class="num ${p.unsubs >= 10 ? 'lo' : ''}">${p.unsubs}</td>
+      <td style="text-align:center">${p.url ? `<a href="${p.url}" target="_blank" style="background:#7048A0;color:#fff;padding:2px 7px;border-radius:3px;text-decoration:none;font-size:11px;white-space:nowrap">↗ View</a>` : '─'}</td>
     </tr>`;
   }).join('');
 
