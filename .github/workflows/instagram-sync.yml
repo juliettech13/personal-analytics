@@ -36,20 +36,20 @@ jobs:
               except urllib.error.HTTPError as e:
                   body = e.read().decode('utf-8', errors='replace')
                   if optional:
-                      print(f'  (optional) HTTP {e.code} on {path} — skipping', file=sys.stderr)
+                      print(f'  ⚠ (optional) HTTP {e.code} on {path}: {body[:300]}')
                       return {}
                   print(f'HTTP {e.code} on {path}:\n{body}', file=sys.stderr)
                   sys.exit(1)
               except Exception as e:
                   if optional:
-                      print(f'  (optional) request failed on {path}: {e} — skipping', file=sys.stderr)
+                      print(f'  ⚠ (optional) request failed on {path}: {e}')
                       return {}
                   print(f'Request failed on {path}: {e}', file=sys.stderr)
                   sys.exit(1)
               if 'error' in data:
                   err = data['error']
                   if optional:
-                      print(f'  (optional) Graph API error on {path}: {err.get("message")} — skipping', file=sys.stderr)
+                      print(f'  ⚠ (optional) Graph API error on {path}: code={err.get("code")} — {err.get("message")}')
                       return {}
                   print(f'Graph API error on {path}:\n  code={err.get("code")} type={err.get("type")}\n  message={err.get("message")}', file=sys.stderr)
                   sys.exit(1)
@@ -210,14 +210,18 @@ jobs:
               }
               ins = api_get(f'/{sid}/insights',
                             optional=True,
-                            metric='impressions,reach,replies,taps_forward,taps_back,exits',
-                            period='lifetime')
+                            metric='impressions,reach,replies,taps_forward,taps_back,exits')
               if ins.get('data'):
                   for item in ins['data']:
                       if item['name'] in story:
-                          story[item['name']] = item.get('value') or 0
+                          val = item.get('value')
+                          if val is None:
+                              val = (item.get('total_value') or {}).get('value')
+                          if val is None:
+                              val = ((item.get('values') or [{}])[-1].get('value', 0))
+                          story[item['name']] = val or 0
               else:
-                  print(f'    ⚠ story {sid}: insights empty — check stderr above for the API error (likely missing instagram_manage_insights permission)')
+                  print(f'    ⚠ story {sid}: no insights returned (any API error logged above)')
               active_stories.append(story)
               print(f'  {story["date"]} STORY: 👁 {story["impressions"]}  📍 {story["reach"]}  💬 {story["replies"]}  ➡ {story["taps_forward"]}  ⬅ {story["taps_back"]}  🚪 {story["exits"]}')
               if sid not in seen_ids:

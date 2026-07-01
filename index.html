@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=VT323&family=Share+Tech+Mono&family=Special+Elite&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════
    RETRO 2000s / MAC OS9 AESTHETIC
@@ -284,6 +285,31 @@ body {
 .kpi.accent-t .kpi-val { color: var(--teal); }
 .nl-badge-hot  { display:inline-block; padding:1px 5px; border-radius:2px; font-size:8px; font-weight:bold; background:#FFE8D0; color:#803800; }
 .nl-badge-good { display:inline-block; padding:1px 5px; border-radius:2px; font-size:8px; font-weight:bold; background:#E0FFE8; color:#006030; }
+
+/* ── CSV upload drop zone ── */
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 4px;
+  padding: 28px 24px;
+  cursor: pointer;
+  font-family: var(--pixel);
+  font-size: 20px;
+  color: #bbb;
+  transition: border-color .15s, background .15s, color .15s;
+  max-width: 320px;
+  margin: 0 auto;
+  user-select: none;
+}
+.dropzone:hover, .dropzone.drag-over {
+  border-color: var(--dark);
+  background: var(--cream2);
+  color: var(--dark);
+}
+.badge-inline {
+  display:inline-block; padding:1px 5px; border-radius:2px;
+  font-size:8px; font-weight:bold; font-family:var(--mono);
+  text-transform:uppercase;
+}
 </style>
 </head>
 <body>
@@ -314,8 +340,8 @@ body {
         <button onclick="switchView('ig')">📸 Instagram</button>
         <button onclick="switchView('newsletter')">📰 Newsletter</button>
         <div class="menu-dd-sep"></div>
-        <button disabled style="opacity:.4">💼 LinkedIn (soon)</button>
-        <button disabled style="opacity:.4">🐦 Twitter/X (soon)</button>
+        <button onclick="switchView('linkedin')">💼 LinkedIn</button>
+        <button onclick="switchView('twitter')">🐦 Twitter/X</button>
       </div>
     </div>
     <div class="menu-item">
@@ -715,6 +741,16 @@ body {
 
   </div><!-- /view-newsletter -->
 
+  <!-- LinkedIn View -->
+  <div id="view-linkedin" style="display:none">
+    <div id="li-content"></div>
+  </div>
+
+  <!-- Twitter/X View -->
+  <div id="view-twitter" style="display:none">
+    <div id="tw-content"></div>
+  </div>
+
 </div><!-- /app -->
 
 <!-- Dock -->
@@ -722,8 +758,8 @@ body {
   <span style="font-size:9px;color:#999;margin-right:4px">GO TO:</span>
   <button class="dock-btn active" id="dock-ig" data-view="ig">📸 Instagram</button>
   <button class="dock-btn" id="dock-nl" data-view="newsletter">📰 Newsletter</button>
-  <button class="dock-btn" id="dock-li">💼 LinkedIn</button>
-  <button class="dock-btn" id="dock-tw">🐦 Twitter/X</button>
+  <button class="dock-btn" id="dock-li" data-view="linkedin">💼 LinkedIn</button>
+  <button class="dock-btn" id="dock-tw" data-view="twitter">🐦 Twitter/X</button>
   <span style="width:1px;background:#ddd;height:20px;margin:0 4px"></span>
   <button class="dock-btn" id="btn-sync" onclick="triggerSync()">↺ Refresh</button>
 </div>
@@ -741,19 +777,30 @@ const LINKS = {
 
 function switchView(view) {
   document.querySelectorAll('.menu-item.open').forEach(i => i.classList.remove('open'));
-  document.getElementById('view-ig').style.display         = view === 'ig'         ? 'block' : 'none';
-  document.getElementById('view-newsletter').style.display = view === 'newsletter' ? 'block' : 'none';
+  document.getElementById('view-ig').style.display           = view === 'ig'         ? 'block' : 'none';
+  document.getElementById('view-newsletter').style.display   = view === 'newsletter' ? 'block' : 'none';
+  document.getElementById('view-linkedin').style.display     = view === 'linkedin'   ? 'block' : 'none';
+  document.getElementById('view-twitter').style.display      = view === 'twitter'    ? 'block' : 'none';
   document.querySelectorAll('.dock-btn[data-view]').forEach(b => {
     b.classList.toggle('active', b.dataset.view === view);
   });
+  // Lazy-render platform views on first tab activation
+  if (view === 'linkedin' && !liRendered) {
+    if (liData) renderLinkedIn(liData);
+    else showUploadPrompt('linkedin');
+  }
+  if (view === 'twitter' && !twRendered) {
+    if (twData) renderTwitter(twData);
+    else showUploadPrompt('twitter');
+  }
 }
 
 function setupDock(username) {
   LINKS.instagram = `https://www.instagram.com/${username}/`;
   document.getElementById('dock-ig').onclick = () => switchView('ig');
   document.getElementById('dock-nl').onclick = () => switchView('newsletter');
-  document.getElementById('dock-li').onclick = () => window.open(LINKS.linkedin, '_blank');
-  document.getElementById('dock-tw').onclick = () => window.open(LINKS.twitter,  '_blank');
+  document.getElementById('dock-li').onclick = () => switchView('linkedin');
+  document.getElementById('dock-tw').onclick = () => switchView('twitter');
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1522,6 +1569,739 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ═══════════════════════════════════════════════════
+   CSV PLATFORM ANALYTICS — LinkedIn & Twitter/X
+═══════════════════════════════════════════════════ */
+
+let liData = null, twData = null;
+let liRendered = false, twRendered = false;
+
+// ── CSV parsing ──────────────────────────────────
+
+function splitCSVLine(line) {
+  const fields = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) {
+      fields.push(cur); cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  fields.push(cur);
+  return fields;
+}
+
+function parseCSV(text) {
+  const clean = text.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = clean.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = splitCSVLine(lines[0]).map(h =>
+    h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+  );
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = splitCSVLine(line);
+    const row = {};
+    headers.forEach((h, i) => {
+      let v = (vals[i] || '').trim();
+      if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1);
+      row[h] = v;
+    });
+    return row;
+  });
+}
+
+// ── Upload prompt ────────────────────────────────
+
+function showUploadPrompt(platform) {
+  const isLI = platform === 'linkedin';
+  const containerId = isLI ? 'li-content' : 'tw-content';
+  const icon  = isLI ? '💼' : '𝕏';
+  const name  = isLI ? 'LinkedIn' : 'Twitter / X';
+  const color = isLI ? '#0A66C2' : '#1C1C1C';
+  const file  = isLI ? 'data/linkedin.csv' : 'data/twitter.csv';
+
+  const steps = isLI ? `
+    <li>Go to <strong>linkedin.com</strong> → your profile → <strong>Analytics</strong></li>
+    <li>Click <strong>Post impressions</strong> → top-right <strong>Export</strong></li>
+    <li>Choose a date range and download the CSV</li>
+    <li>Drop the file below</li>
+  ` : `
+    <li>Go to <strong>analytics.twitter.com</strong></li>
+    <li>Click <strong>Export data</strong> → <strong>By tweet</strong></li>
+    <li>Select your date range → download CSV</li>
+    <li>Drop the file below</li>
+  `;
+
+  document.getElementById(containerId).innerHTML = `
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">${icon} ${name} Analytics — Import Data</div>
+      </div>
+      <div class="win-body" style="text-align:center;padding:32px 20px 24px">
+        <div style="font-family:var(--pixel);font-size:32px;color:${color};margin-bottom:8px">⬛ NO DATA</div>
+        <div style="font-family:var(--mono);font-size:11px;color:#666;margin-bottom:20px">
+          Export your ${name} analytics CSV and drop it below.
+        </div>
+        <div style="background:var(--cream2);border:1px solid var(--border);border-radius:4px;padding:12px 16px;margin-bottom:20px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto">
+          <div class="sh">How to export</div>
+          <ol style="font-size:11px;color:#555;padding-left:18px;line-height:2;margin:6px 0 0">${steps}</ol>
+        </div>
+        <div id="${platform}-dropzone" class="dropzone">
+          <div>⬛ DROP CSV or XLSX HERE</div>
+          <div style="font-size:11px;color:#aaa;margin-top:6px;font-family:var(--mono)">or click to browse</div>
+          <input type="file" id="${platform}-file-input" accept=".csv,.xlsx,.xls" style="display:none">
+        </div>
+        <div style="font-size:9px;color:#bbb;margin-top:14px;font-family:var(--mono)">
+          💾 Commit as <code>${file}</code> in your repo to persist across devices
+        </div>
+      </div>
+    </div>
+  `;
+
+  const dz    = document.getElementById(`${platform}-dropzone`);
+  const input = document.getElementById(`${platform}-file-input`);
+
+  dz.addEventListener('click', () => input.click());
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) readCSVFile(platform, e.dataTransfer.files[0]);
+  });
+  input.addEventListener('change', () => { if (input.files[0]) readCSVFile(platform, input.files[0]); });
+}
+
+// ── XLSX → rows (handles LinkedIn .xlsx exports) ─
+
+// Parse LinkedIn's native multi-sheet XLSX export (DISCOVERY / ENGAGEMENT / TOP POSTS / FOLLOWERS / DEMOGRAPHICS)
+function parseLinkedInXLSX(wb) {
+  function sheetRows(name) {
+    const ws = wb.Sheets[name];
+    if (!ws) return [];
+    return XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+  }
+  function n(v) { return +String(v).replace(/[^0-9.]/g, '') || 0; }
+
+  const d = {
+    period: '', totalImpressions: 0, membersReached: 0,
+    totalFollowers: 0, newFollowers: 0,
+    dailyEngagement: [], topByImpressions: [], topByEngagements: [],
+    demographics: [],
+  };
+
+  // DISCOVERY: key-value rows
+  sheetRows('DISCOVERY').forEach(row => {
+    const k = String(row[0]).toLowerCase();
+    if (k.includes('impression'))             d.totalImpressions = n(row[1]);
+    else if (k.includes('member') || k.includes('reach')) d.membersReached = n(row[1]);
+    if (row[1] && String(row[1]).includes('-')) d.period = String(row[1]).trim();
+  });
+
+  // ENGAGEMENT: header row then daily rows
+  const engRows = sheetRows('ENGAGEMENT');
+  engRows.slice(1).forEach(row => {
+    const date = String(row[0]).trim();
+    if (!date || date.toLowerCase() === 'date') return;
+    d.dailyEngagement.push({ date, impressions: n(row[1]), engagements: n(row[2]) });
+  });
+
+  // TOP POSTS: row 0 = disclaimer, row 1 = headers (left=by-engagement, right=by-impressions), row 2+ = data
+  // Columns: [0] Post URL (eng), [1] Date, [2] Engagements, [3] blank, [4] Post URL (impr), [5] Date, [6] Impressions
+  const postRows = sheetRows('TOP POSTS');
+  postRows.slice(2).forEach(row => {
+    if (row[4]) d.topByImpressions.push({ url: String(row[4]).trim(), date: String(row[5]).trim(), impressions: n(row[6]) });
+    if (row[0]) d.topByEngagements.push({ url: String(row[0]).trim(), date: String(row[1]).trim(), engagements: n(row[2]) });
+  });
+
+  // FOLLOWERS
+  let inDaily = false;
+  sheetRows('FOLLOWERS').forEach(row => {
+    const k = String(row[0]).toLowerCase();
+    if (k.includes('total follower'))     d.totalFollowers = n(row[1]);
+    if (k === 'date')                     { inDaily = true; return; }
+    if (inDaily && row[0])                d.newFollowers += n(row[1]);
+  });
+
+  // DEMOGRAPHICS
+  sheetRows('DEMOGRAPHICS').slice(1).forEach(row => {
+    if (row[0] && row[1]) d.demographics.push({ category: String(row[0]).trim(), value: String(row[1]).trim(), pct: String(row[2]).trim() });
+  });
+
+  return d;
+}
+
+// Generic XLSX → row-array fallback (used for Twitter XLSX or non-LinkedIn sheets)
+function xlsxToRows(wb) {
+  const ws  = wb.Sheets[wb.SheetNames[0]];
+  const all = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(all.length, 15); i++) {
+    if (all[i].filter(c => String(c).trim()).length >= 4) { headerIdx = i; break; }
+  }
+  const headers = all[headerIdx].map(h =>
+    String(h).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+  );
+  return all.slice(headerIdx + 1)
+    .filter(row => row.some(c => String(c).trim()))
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = String(row[i] ?? '').trim(); });
+      return obj;
+    });
+}
+
+function readCSVFile(platform, file) {
+  const isXLSX = /\.xlsx?$/i.test(file.name);
+  const key    = platform === 'linkedin' ? 'nerd_li_csv' : 'nerd_tw_csv';
+
+  const finish = data => {
+    const count = Array.isArray(data) ? data.length : (data.topByImpressions || []).length;
+    if (!count && !data.totalImpressions) { showToast('⚠ No data found — check the file format'); return; }
+    const label = Array.isArray(data) ? `${data.length} rows` : `${data.totalImpressions} impressions`;
+    showToast(`✓ Loaded ${label}`);
+    if (platform === 'linkedin') { liData = data; liRendered = false; renderLinkedIn(data); }
+    else                         { twData = data; twRendered = false; renderTwitter(data); }
+  };
+
+  if (isXLSX) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', raw: false });
+        const isLinkedInNative = wb.SheetNames.some(n => n === 'TOP POSTS' || n === 'ENGAGEMENT');
+        const data = (platform === 'linkedin' && isLinkedInNative)
+          ? parseLinkedInXLSX(wb)
+          : xlsxToRows(wb);
+        try { localStorage.setItem(key, JSON.stringify(data)); } catch (_) {}
+        finish(data);
+      } catch (err) {
+        showToast('⚠ Could not parse XLSX — ' + err.message);
+        console.error(err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const rows = parseCSV(e.target.result);
+      try { localStorage.setItem(key, e.target.result); } catch (_) {}
+      finish(rows);
+    };
+    reader.readAsText(file);
+  }
+}
+
+// ── LinkedIn render ──────────────────────────────
+
+function renderLinkedIn(data) {
+  if (!data) { showUploadPrompt('linkedin'); return; }
+  // Structured LinkedIn XLSX object (has dailyEngagement property)
+  if (data.dailyEngagement) { renderLinkedInNative(data); return; }
+  // Fallback: CSV/generic XLSX row array
+  if (!Array.isArray(data) || !data.length) { showUploadPrompt('linkedin'); return; }
+  renderLinkedInCSV(data);
+}
+
+function renderLinkedInNative(d) {
+  const totalEng  = d.dailyEngagement.reduce((s, r) => s + r.engagements, 0);
+  const engRate   = d.totalImpressions > 0 ? totalEng / d.totalImpressions * 100 : 0;
+  const topPost   = d.topByImpressions[0];
+
+  // Group demographics by category
+  const demoGroups = {};
+  d.demographics.forEach(({ category, value, pct }) => {
+    if (!demoGroups[category]) demoGroups[category] = [];
+    demoGroups[category].push({ value, pct });
+  });
+
+  document.getElementById('li-content').innerHTML = `
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">💼 LinkedIn Analytics</div>
+        <div class="win-tag">${d.period}</div>
+      </div>
+      <div class="profile-head">
+        <div class="profile-avatar" style="font-size:26px;line-height:1">💼</div>
+        <div>
+          <div class="profile-name" style="font-size:22px">LinkedIn</div>
+          <div class="profile-handle">${d.totalFollowers ? fmt(d.totalFollowers) + ' followers' : 'Analytics export'}</div>
+        </div>
+        <div class="profile-stats">
+          <div class="pstat"><div class="pstat-v">${fmt(d.totalImpressions)}</div><div class="pstat-l">Impressions</div></div>
+          <div class="pstat"><div class="pstat-v">${fmt(d.membersReached)}</div><div class="pstat-l">Members Reached</div></div>
+          ${d.totalFollowers ? `<div class="pstat"><div class="pstat-v">+${fmt(d.newFollowers)}</div><div class="pstat-l">New Followers</div></div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">Performance Vitals · ${d.period}</div>
+      </div>
+      <div class="win-body sm"><div class="kpi-row">
+        <div class="kpi"><div class="kpi-lbl">Total Impressions</div><div class="kpi-val" style="color:#0A66C2">${fmt(d.totalImpressions)}</div></div>
+        <div class="kpi accent-g"><div class="kpi-lbl">Members Reached</div><div class="kpi-val">${fmt(d.membersReached)}</div></div>
+        <div class="kpi accent-o"><div class="kpi-lbl">Total Engagements</div><div class="kpi-val">${fmt(totalEng)}</div></div>
+        <div class="kpi accent-f"><div class="kpi-lbl">Eng Rate</div><div class="kpi-val">${pct(engRate)}</div></div>
+        ${d.totalFollowers ? `<div class="kpi"><div class="kpi-lbl">Total Followers</div><div class="kpi-val">${fmt(d.totalFollowers)}</div></div>` : ''}
+        ${d.newFollowers   ? `<div class="kpi accent-r"><div class="kpi-lbl">New Followers</div><div class="kpi-val">+${fmt(d.newFollowers)}</div></div>` : ''}
+      </div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="win">
+        <div class="win-title">
+          <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+          <div class="win-label">📈 Daily Impressions</div>
+        </div>
+        <div class="win-body"><div class="chart-wrap" style="height:200px"><canvas id="chart-li-impr"></canvas></div></div>
+      </div>
+      <div class="win">
+        <div class="win-title">
+          <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+          <div class="win-label">💫 Daily Engagements</div>
+        </div>
+        <div class="win-body"><div class="chart-wrap" style="height:200px"><canvas id="chart-li-eng"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">🏆 Top Posts by Impressions</div>
+      </div>
+      <div class="win-body"><div class="scroll">
+        <table class="tbl"><thead><tr>
+          <th>Post</th><th>Date</th><th>Impressions</th>
+        </tr></thead><tbody id="li-tbody"></tbody></table>
+      </div></div>
+    </div>
+
+    ${Object.keys(demoGroups).length ? `
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">👥 Audience Demographics</div>
+      </div>
+      <div class="win-body">
+        <div id="li-demo" style="display:flex;flex-wrap:wrap;gap:24px;padding:8px 0"></div>
+      </div>
+    </div>` : ''}
+
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">💡 Auto Insights</div>
+      </div>
+      <div class="win-body"><div id="li-pills" class="pills"></div></div>
+    </div>
+
+    <div style="text-align:right;margin-bottom:8px">
+      <button class="dock-btn" onclick="showUploadPrompt('linkedin');liRendered=false;">⬆ Upload new export</button>
+    </div>
+  `;
+
+  // Top posts table
+  document.getElementById('li-tbody').innerHTML = d.topByImpressions.slice(0, 15).map(p => {
+    const slug = p.url.split('/posts/')[1]?.split('-ugcPost')[0]?.split('-share')[0] || '';
+    const label = slug ? slug.replace(/-/g, ' ').slice(0, 60) : 'View post';
+    return `<tr>
+      <td><a href="${p.url}" target="_blank" style="color:#0A66C2;font-size:11px">${label}…</a></td>
+      <td style="color:#888;white-space:nowrap">${p.date}</td>
+      <td class="num">${fmt(p.impressions)}</td>
+    </tr>`;
+  }).join('');
+
+  // Daily charts
+  const labels = d.dailyEngagement.map(r => r.date);
+  new Chart(document.getElementById('chart-li-impr'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Impressions', data: d.dailyEngagement.map(r => r.impressions),
+      backgroundColor: '#0A66C2AA', borderColor: '#0A66C2', borderWidth: 1 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+  });
+  new Chart(document.getElementById('chart-li-eng'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Engagements', data: d.dailyEngagement.map(r => r.engagements),
+      backgroundColor: TEAL_CLR + 'AA', borderColor: TEAL_CLR, borderWidth: 1 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+  });
+
+  // Demographics — one pie chart per category
+  const demoEl = document.getElementById('li-demo');
+  if (demoEl) {
+    const demoPalette = ['#0A66C2','#3A8C84','#C8973A','#C84860','#7048A0','#3A6890','#888'];
+    Object.entries(demoGroups).forEach(([cat, items], catIdx) => {
+      const canvasId = `chart-li-demo-${catIdx}`;
+      const slices = items.slice(0, 6);
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'min-width:180px;flex:1 1 180px;max-width:240px';
+      wrapper.innerHTML = `
+        <div class="sh" style="margin-bottom:8px;text-align:center">${cat}</div>
+        <div style="width:140px;height:140px;margin:0 auto"><canvas id="${canvasId}"></canvas></div>
+        <div style="margin-top:8px">${slices.map((item, i) =>
+          `<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#555;padding:2px 0">
+            <div style="width:8px;height:8px;border-radius:50%;background:${demoPalette[i % demoPalette.length]};flex-shrink:0"></div>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.value}</span>
+            <span style="color:#888;flex-shrink:0">${item.pct}</span>
+          </div>`
+        ).join('')}</div>`;
+      demoEl.appendChild(wrapper);
+      new Chart(document.getElementById(canvasId), {
+        type: 'pie',
+        data: {
+          labels: slices.map(i => i.value),
+          datasets: [{ data: slices.map(i => parseFloat(i.pct) || 1),
+            backgroundColor: demoPalette.slice(0, slices.length), borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+      });
+    });
+  }
+
+  // Insight pills
+  const pills = [
+    { cls: 'good', text: `${fmt(d.totalImpressions)} impressions · ${fmt(d.membersReached)} members reached · period: ${d.period}` },
+    { cls: 'good', text: `${fmt(totalEng)} engagements · ${pct(engRate)} engagement rate` },
+  ];
+  if (d.totalFollowers) pills.push({ cls: 'info', text: `${fmt(d.totalFollowers)} total followers · +${fmt(d.newFollowers)} gained this period` });
+  if (topPost)          pills.push({ cls: 'hot',  text: `Top post: ${fmt(topPost.impressions)} impressions on ${topPost.date}` });
+  const demoCompany = demoGroups['Company']?.[0];
+  if (demoCompany) pills.push({ cls: 'info', text: `Top audience company: ${demoCompany.value}` });
+  document.getElementById('li-pills').innerHTML = pills.map(p =>
+    `<div class="pill ${p.cls}"><span>${p.text}</span></div>`
+  ).join('');
+
+  liRendered = true;
+}
+
+function renderLinkedInCSV(rows) {
+  const r0  = rows[0];
+  const col = k => Object.keys(r0).find(h => h.includes(k)) || '';
+  const COL = {
+    date:     col('published_date') || col('published_at') || col('date'),
+    type:     col('post_type') || col('media_type') || col('type'),
+    impr:     col('impressions') || col('unique_impressions'),
+    reactions:col('reactions') || col('likes'),
+    comments: col('comments'),
+    reposts:  col('reposts') || col('shares'),
+    eng_rate: col('engagement_rate'),
+  };
+  function num(row, k) { return +(row[k] || '').replace(/[%,\s]/g, '') || 0; }
+
+  const totalImpr  = rows.reduce((s, r) => s + num(r, COL.impr), 0);
+  const totalReact = rows.reduce((s, r) => s + num(r, COL.reactions), 0);
+  const totalComm  = rows.reduce((s, r) => s + num(r, COL.comments), 0);
+  const totalRep   = rows.reduce((s, r) => s + num(r, COL.reposts), 0);
+  const avgImpr    = Math.round(totalImpr / rows.length);
+  const erVals     = rows.map(r => num(r, COL.eng_rate)).filter(v => v > 0);
+  const avgEng     = erVals.length ? erVals.reduce((s, v) => s + v, 0) / erVals.length
+    : totalImpr > 0 ? (totalReact + totalComm + totalRep) / totalImpr * 100 : 0;
+  const sorted     = [...rows].sort((a, b) => num(b, COL.impr) - num(a, COL.impr)).slice(0, 15);
+  const dates      = rows.map(r => (r[COL.date] || '').slice(0, 10)).filter(Boolean).sort();
+  const dateRange  = dates.length ? `${dates[0]} → ${dates[dates.length - 1]}` : '';
+
+  document.getElementById('li-content').innerHTML = `
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">💼 LinkedIn Analytics</div>
+        <div class="win-tag">${dateRange}</div>
+      </div>
+      <div class="win-body sm"><div class="kpi-row">
+        <div class="kpi"><div class="kpi-lbl">Total Impressions</div><div class="kpi-val" style="color:#0A66C2">${fmt(totalImpr)}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Avg / Post</div><div class="kpi-val">${fmt(avgImpr)}</div></div>
+        <div class="kpi accent-g"><div class="kpi-lbl">Avg Eng Rate</div><div class="kpi-val">${pct(avgEng)}</div></div>
+        <div class="kpi accent-o"><div class="kpi-lbl">Reactions</div><div class="kpi-val">${fmt(totalReact)}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Comments</div><div class="kpi-val">${fmt(totalComm)}</div></div>
+        <div class="kpi accent-r"><div class="kpi-lbl">Reposts</div><div class="kpi-val">${fmt(totalRep)}</div></div>
+      </div></div>
+    </div>
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">📈 Impressions Over Time</div>
+      </div>
+      <div class="win-body"><div class="chart-wrap" style="height:200px"><canvas id="chart-li-trend"></canvas></div></div>
+    </div>
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">🏆 Top Posts</div>
+      </div>
+      <div class="win-body"><div class="scroll">
+        <table class="tbl"><thead><tr>
+          <th>Date</th><th>Impressions</th><th>Reactions</th><th>Comments</th><th>Reposts</th>
+        </tr></thead><tbody id="li-tbody"></tbody></table>
+      </div></div>
+    </div>
+    <div style="text-align:right;margin-bottom:8px">
+      <button class="dock-btn" onclick="showUploadPrompt('linkedin');liRendered=false;">⬆ Upload new export</button>
+    </div>
+  `;
+
+  document.getElementById('li-tbody').innerHTML = sorted.map(r => `<tr>
+    <td style="color:#888">${(r[COL.date] || '').slice(0, 10)}</td>
+    <td class="num">${fmt(num(r, COL.impr))}</td>
+    <td class="num">${fmt(num(r, COL.reactions))}</td>
+    <td class="num">${fmt(num(r, COL.comments))}</td>
+    <td class="num">${fmt(num(r, COL.reposts))}</td>
+  </tr>`).join('');
+
+  const byMonth = {};
+  rows.forEach(r => {
+    const d = (r[COL.date] || '').slice(0, 7);
+    if (d) byMonth[d] = (byMonth[d] || 0) + num(r, COL.impr);
+  });
+  const months = Object.keys(byMonth).sort();
+  new Chart(document.getElementById('chart-li-trend'), {
+    type: 'line',
+    data: { labels: months, datasets: [{ data: months.map(m => byMonth[m]),
+      borderColor: '#0A66C2', backgroundColor: '#0A66C220', fill: true, tension: .35, pointRadius: 3 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+  });
+
+  liRendered = true;
+}
+
+// ── Twitter/X render ─────────────────────────────
+
+function renderTwitter(rows) {
+  if (!rows || !rows.length) { showUploadPrompt('twitter'); return; }
+
+  const r0  = rows[0];
+  const col = k => Object.keys(r0).find(h => h.includes(k)) || '';
+  const COL = {
+    text:    col('tweet_text') || col('text'),
+    date:    col('time') || col('date') || col('created'),
+    impr:    col('impressions'),
+    eng:     col('engagements'),
+    eng_rate:col('engagement_rate'),
+    rt:      col('retweets'),
+    replies: col('replies'),
+    likes:   col('likes'),
+    url:     col('tweet_permalink') || col('permalink'),
+  };
+
+  function num(row, k) { return +(row[k] || '').replace(/[%,\s]/g, '') || 0; }
+
+  const totalImpr   = rows.reduce((s, r) => s + num(r, COL.impr),    0);
+  const totalEng    = rows.reduce((s, r) => s + num(r, COL.eng),     0);
+  const totalLikes  = rows.reduce((s, r) => s + num(r, COL.likes),   0);
+  const totalRT     = rows.reduce((s, r) => s + num(r, COL.rt),      0);
+  const totalReplies= rows.reduce((s, r) => s + num(r, COL.replies), 0);
+  const avgImpr     = Math.round(totalImpr / rows.length);
+  const avgEngRate  = totalImpr > 0 ? totalEng / totalImpr * 100 : 0;
+
+  const dates    = rows.map(r => (r[COL.date] || '').slice(0, 10)).filter(Boolean).sort();
+  const dateRange= dates.length ? `${dates[0]} → ${dates[dates.length - 1]}` : '';
+
+  document.getElementById('tw-content').innerHTML = `
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">𝕏 Twitter / X Analytics</div>
+        <div class="win-tag">${dateRange}</div>
+      </div>
+      <div class="profile-head">
+        <div class="profile-avatar" style="font-size:26px;line-height:1">𝕏</div>
+        <div>
+          <div class="profile-name" style="font-size:22px">Twitter / X</div>
+          <div class="profile-handle">${rows.length} tweets analyzed</div>
+        </div>
+        <div class="profile-stats">
+          <div class="pstat"><div class="pstat-v">${fmt(totalImpr)}</div><div class="pstat-l">Total Impressions</div></div>
+          <div class="pstat"><div class="pstat-v">${fmt(avgImpr)}</div><div class="pstat-l">Avg / Tweet</div></div>
+          <div class="pstat"><div class="pstat-v">${pct(avgEngRate)}</div><div class="pstat-l">Avg Eng%</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">Performance Vitals · ${rows.length} Tweets</div>
+      </div>
+      <div class="win-body sm"><div class="kpi-row">
+        <div class="kpi"><div class="kpi-lbl">Total Impressions</div><div class="kpi-val">${fmt(totalImpr)}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Avg / Tweet</div><div class="kpi-val">${fmt(avgImpr)}</div></div>
+        <div class="kpi accent-g"><div class="kpi-lbl">Avg Eng Rate</div><div class="kpi-val">${pct(avgEngRate)}</div></div>
+        <div class="kpi accent-o"><div class="kpi-lbl">Total Likes</div><div class="kpi-val">${fmt(totalLikes)}</div></div>
+        <div class="kpi accent-r"><div class="kpi-lbl">Retweets</div><div class="kpi-val">${fmt(totalRT)}</div></div>
+        <div class="kpi accent-f"><div class="kpi-lbl">Replies</div><div class="kpi-val">${fmt(totalReplies)}</div></div>
+      </div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="win">
+        <div class="win-title">
+          <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+          <div class="win-label">📈 Impressions Over Time</div>
+        </div>
+        <div class="win-body"><div class="chart-wrap" style="height:200px"><canvas id="chart-tw-trend"></canvas></div></div>
+      </div>
+      <div class="win">
+        <div class="win-title">
+          <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+          <div class="win-label">💫 Engagement Rate Trend</div>
+        </div>
+        <div class="win-body"><div class="chart-wrap" style="height:200px"><canvas id="chart-tw-eng"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">🏆 Top Tweets by Impressions</div>
+      </div>
+      <div class="win-body"><div class="scroll">
+        <table class="tbl"><thead><tr>
+          <th>Tweet</th><th>Date</th><th>Impressions</th><th>Likes</th><th>RTs</th><th>Replies</th><th>Eng%</th>
+        </tr></thead><tbody id="tw-tbody"></tbody></table>
+      </div></div>
+    </div>
+
+    <div class="win">
+      <div class="win-title">
+        <div class="win-btns"><div class="btn-c r"></div><div class="btn-c y"></div><div class="btn-c g"></div></div>
+        <div class="win-label">💡 Auto Insights</div>
+      </div>
+      <div class="win-body"><div id="tw-pills" class="pills"></div></div>
+    </div>
+
+    <div style="text-align:right;margin-bottom:8px">
+      <button class="dock-btn" onclick="showUploadPrompt('twitter');twRendered=false;">⬆ Upload new CSV</button>
+    </div>
+  `;
+
+  // Top tweets table
+  const sorted = [...rows].sort((a, b) => num(b, COL.impr) - num(a, COL.impr)).slice(0, 15);
+  document.getElementById('tw-tbody').innerHTML = sorted.map(r => {
+    const impr   = num(r, COL.impr);
+    const eng    = num(r, COL.eng);
+    const erPct  = impr > 0 ? eng / impr * 100 : 0;
+    const text   = (r[COL.text] || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').slice(0, 80);
+    const url    = r[COL.url] || '';
+    const cell   = url
+      ? `<a href="${url}" target="_blank" style="color:inherit">${text}${text.length >= 80 ? '…' : ''}</a>`
+      : `${text}${text.length >= 80 ? '…' : ''}`;
+    return `<tr>
+      <td class="caption-preview">${cell}</td>
+      <td style="color:#888;white-space:nowrap">${(r[COL.date] || '').slice(0, 10)}</td>
+      <td class="num">${fmt(impr)}</td>
+      <td class="num">${fmt(num(r, COL.likes))}</td>
+      <td class="num">${fmt(num(r, COL.rt))}</td>
+      <td class="num">${fmt(num(r, COL.replies))}</td>
+      <td class="num">${pct(erPct)}</td>
+    </tr>`;
+  }).join('');
+
+  // Impressions + engagement over time (by month)
+  const byMonth = {}, engByM = {}, cntByM = {};
+  rows.forEach(r => {
+    const d = (r[COL.date] || '').slice(0, 7);
+    if (!d) return;
+    const i = num(r, COL.impr), e = num(r, COL.eng);
+    byMonth[d] = (byMonth[d] || 0) + i;
+    engByM[d]  = (engByM[d]  || 0) + (i > 0 ? e / i * 100 : 0);
+    cntByM[d]  = (cntByM[d]  || 0) + 1;
+  });
+  const months = Object.keys(byMonth).sort();
+
+  new Chart(document.getElementById('chart-tw-trend'), {
+    type: 'line',
+    data: { labels: months, datasets: [{ label: 'Impressions', data: months.map(m => byMonth[m]),
+      borderColor: '#1C1C1C', backgroundColor: 'rgba(28,28,28,.1)', fill: true, tension: .35, pointRadius: 3 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+  });
+  new Chart(document.getElementById('chart-tw-eng'), {
+    type: 'line',
+    data: { labels: months, datasets: [{ label: 'Eng Rate %',
+      data: months.map(m => +((engByM[m] || 0) / (cntByM[m] || 1)).toFixed(2)),
+      borderColor: TEAL_CLR, backgroundColor: TEAL_CLR + '20', fill: true, tension: .35, pointRadius: 3 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } } },
+  });
+
+  // Insight pills
+  const top   = sorted[0];
+  const pills = [
+    { cls: 'good', text: `${rows.length} tweets · ${fmt(totalImpr)} total impressions · avg ${fmt(avgImpr)} per tweet` },
+    { cls: 'good', text: `${fmt(totalLikes)} likes · ${fmt(totalRT)} retweets · ${fmt(totalReplies)} replies` },
+    { cls: 'hot',  text: `Top tweet: ${fmt(num(top, COL.impr))} impressions on ${(top[COL.date] || '').slice(0, 10)}` },
+  ];
+  if (avgEngRate > 2)
+    pills.push({ cls: 'good', text: `Engagement rate ${pct(avgEngRate)} is above the typical 1–2% benchmark` });
+  else if (avgEngRate > 0 && avgEngRate < 0.5)
+    pills.push({ cls: 'warn', text: `Engagement rate ${pct(avgEngRate)} is below 0.5% — try different formats or posting times` });
+  document.getElementById('tw-pills').innerHTML = pills.map(p =>
+    `<div class="pill ${p.cls}"><span>${p.text}</span></div>`
+  ).join('');
+
+  twRendered = true;
+}
+
+// ── Try to load platform CSV on startup ──────────
+
+async function tryLoadCSV(platform) {
+  const key  = platform === 'linkedin' ? 'nerd_li_csv' : 'nerd_tw_csv';
+  const path = `/data/${platform}.csv`;
+
+  // 1. Try repo-committed file
+  try {
+    const r = await fetch(path + '?_=' + Date.now());
+    if (r.ok) {
+      const text = await r.text();
+      if (text.trim()) {
+        try { localStorage.setItem(key, text); } catch (_) {}
+        const rows = parseCSV(text);
+        if (platform === 'linkedin') liData = rows;
+        else                         twData = rows;
+        return;
+      }
+    }
+  } catch (_) {}
+
+  // 2. Try localStorage cache (JSON object = structured LinkedIn, JSON array = XLSX rows, plain text = CSV)
+  try {
+    const cached = localStorage.getItem(key);
+    if (cached) {
+      const trimmed = cached.trimStart();
+      let data;
+      if (trimmed.startsWith('{')) {
+        data = JSON.parse(cached);           // structured LinkedIn XLSX object
+      } else if (trimmed.startsWith('[')) {
+        data = JSON.parse(cached);           // generic XLSX row array
+      } else {
+        data = parseCSV(cached);             // raw CSV text
+      }
+      const hasData = Array.isArray(data) ? data.length > 0 : (data && (data.totalImpressions > 0 || data.dailyEngagement));
+      if (hasData) {
+        if (platform === 'linkedin') liData = data;
+        else                         twData = data;
+        return;
+      }
+    }
+  } catch (_) {}
+
+  // 3. No data — upload prompt will appear when the user first opens the tab
+  if (platform === 'linkedin') liData = null;
+  else                         twData = null;
+}
+
+/* ═══════════════════════════════════════════════════
    MAIN
 ═══════════════════════════════════════════════════ */
 async function main() {
@@ -1566,6 +2346,10 @@ async function main() {
     renderStories(storiesLog, latest.stories || []);
 
     renderNewsletter();
+
+    // Pre-load LinkedIn/Twitter CSVs — renders lazily when tab is first opened
+    tryLoadCSV('linkedin');
+    tryLoadCSV('twitter');
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
