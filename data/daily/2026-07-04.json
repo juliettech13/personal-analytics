@@ -1,10 +1,10 @@
 {
   "username": "_juliettech",
-  "followers": 4437,
-  "following": 7196,
+  "followers": 4438,
+  "following": 7195,
   "biography": "growth engineer, teaching women to invest\nI also host dreamy weekends for founders @adultcamp_",
   "website": "https://juliet.tech/",
-  "profile_pic": "https://scontent-ams2-1.xx.fbcdn.net/v/t51.2885-15/273620267_452480212965447_3954760359422621738_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=7d201b&_nc_ohc=VONaKj_gDX0Q7kNvwHBjQFq&_nc_oc=Adqv2r1B9Q1YWg7ifXQLFTFtqlJ9Ng4WRAEB1gw-6ECALMqEWVxtYNW4sEYPxA3_bUg&_nc_zt=23&_nc_ht=scontent-ams2-1.xx&edm=AL-3X8kEAAAA&oh=00_AQDJue4LZVTrLXhk8uNitXC4tSrVlEG2Xe7yQYIVIP0vEQ&oe=6A4EEC15",
+  "profile_pic": "https://scontent-lhr6-1.xx.fbcdn.net/v/t51.2885-15/273620267_452480212965447_3954760359422621738_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=7d201b&_nc_ohc=VONaKj_gDX0Q7kNvwHoVCLv&_nc_oc=AdovmzroG8fkrTVVbGutZBhNCVuaLSjuDdIkWAL9dOvjO-PzzDfqEHKxmSjtq6qiZJY&_nc_zt=23&_nc_ht=scontent-lhr6-1.xx&edm=AL-3X8kEAAAA&oh=00_AQA82zBjrFNSfklhVKPuC3s7Ey5NZF5LbT00poHoeY2iWA&oe=6A4F2455",
   "media_count": 20,
   "posts": [
     {
@@ -18,11 +18,11 @@
       "url": "https://www.instagram.com/p/DZ7aYObjUGY/",
       "thumbnail_url": "",
       "is_shared_to_feed": false,
-      "reach": 646,
+      "reach": 647,
       "saves": 0,
       "shares": 0,
       "total_interactions": 93,
-      "profile_visits": 9,
+      "profile_visits": 10,
       "follows": 0,
       "plays": 0,
       "avg_watch_time_ms": 0
@@ -56,7 +56,7 @@
       "likes": 31,
       "comments": 0,
       "url": "https://www.instagram.com/reel/DZVR2CxNryU/",
-      "thumbnail_url": "https://scontent-ams2-1.cdninstagram.com/v/t51.82787-15/719161048_18602436199040842_23481290425064556_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=108&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0xJUFMuYmVzdF9pbWFnZV91cmxnZW4uQzMifQ%3D%3D&_nc_ohc=WfCQRHn3xXYQ7kNvwFdghU1&_nc_oc=AdqB_jAeShXmg4B_6aTqqZebfcdI7J5iShdIdrj4thjDY4bg9CzwIwOVydbaKkECvbk&_nc_zt=23&_nc_ht=scontent-ams2-1.cdninstagram.com&edm=AM6HXa8EAAAA&_nc_gid=9Mh-BWdhGw-3k1q40myPHw&_nc_tpa=Q5bMBQFDJU2Kuw3N7rqfv4Jz6I-bc5WbG3gFivR0LgImwgOjls_3MhzL5DPi9o1pgSQ8IgvZTRUfgjEzqQ&oh=00_AQCIvPHt5tDiGfjxv0kU_uxz-mXs3Ye8eL2QoiMoBatFHw&oe=6A4EDC91",
+      "thumbnail_url": "https://scontent-lhr6-1.cdninstagram.com/v/t51.82787-15/719161048_18602436199040842_23481290425064556_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=108&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0xJUFMuYmVzdF9pbWFnZV91cmxnZW4uQzMifQ%3D%3D&_nc_ohc=WfCQRHn3xXYQ7kNvwH_IQOM&_nc_oc=AdpSSNW6q8EH8o7S9v9LvbOEyVxsXY80twuZTlqCXAx4omZsFV89ohGZs5h2CU21PIY&_nc_zt=23&_nc_ht=scontent-lhr6-1.cdninstagram.com&edm=AM6HXa8EAAAA&_nc_gid=OPk3CatGPhhxV3zP8IPVEw&_nc_tpa=Q5bMBQFApWey_pXUVHUQlDn643FI6h7hAFSaNixHEnQNxWRvWETjx0pWxdrfiV7CQumKtItJTMbLqnNnhQ&oh=00_AQCy5L7W_PoDjww44nH8c2svpjCyoEITfOxoyDFiYWe7TQ&oe=6A4F14D1",
       "is_shared_to_feed": true,
       "reach": 773,
       "saves": 0,
@@ -410,5 +410,5 @@
   ],
   "stories": [],
   "account_metrics": {},
-  "fetched_at": "2026-07-04T13:03:17Z"
+  "fetched_at": "2026-07-04T18:58:34Z"
 }
