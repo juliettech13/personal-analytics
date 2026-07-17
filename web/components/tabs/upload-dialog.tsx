@@ -77,7 +77,22 @@ export function UploadDialog({ platform }: { platform: "linkedin" | "twitter" })
       const result = await res.json();
       toast.success(`Saved — ${result.total} records stored`, { id: "upload" });
       setOpen(false);
-      setTimeout(() => location.reload(), 800);
+
+      // Fresh data just landed -- regenerate recommendations now rather than
+      // waiting for the next Refresh, so they reflect this upload immediately.
+      // Awaited (this takes ~30s, an LLM call) so the reload below actually
+      // shows the new recommendation instead of racing ahead of it. A failure
+      // here doesn't undo the successful upload above -- just skip the reload
+      // delay and let the page reload with whatever recommendation already existed.
+      toast.loading("Updating recommendations…", { id: "recommendations" });
+      try {
+        await fetch("/api/recommendations", { method: "POST" });
+        toast.success("Recommendations updated", { id: "recommendations" });
+      } catch {
+        toast.dismiss("recommendations");
+      }
+
+      location.reload();
     } catch (err) {
       toast.error(`Could not parse file — ${err}`);
     } finally {

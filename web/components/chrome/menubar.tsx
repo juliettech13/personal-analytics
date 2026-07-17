@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { refreshAllData } from "@/lib/refresh-client";
 import type { TabKey } from "./dock";
 
 const VIEW_ITEMS: Array<{ key: TabKey; label: string }> = [
@@ -21,22 +22,19 @@ export function Menubar({
   activeTab,
   onTabChange,
   lastUpdatedText,
-  onAnalyzeWithClaude,
 }: {
   activeTab: TabKey;
   onTabChange: (tab: TabKey) => void;
   lastUpdatedText: string;
-  onAnalyzeWithClaude: () => void;
 }) {
   async function triggerSync() {
     try {
-      const res = await fetch("/api/cron/instagram", { method: "POST" });
-      if (res.ok) {
+      const result = await refreshAllData();
+      if (result.ok) {
         toast.success("Sync triggered — reloading in a moment");
         setTimeout(() => location.reload(), 1200);
       } else {
-        const body = await res.json().catch(() => ({}));
-        toast.error(`Sync error: ${body.error ?? res.status}`);
+        toast.error(result.error ?? "Sync error");
       }
     } catch {
       toast.error("Network error");
@@ -91,8 +89,6 @@ export function Menubar({
             Help
           </DropdownMenuTrigger>
           <DropdownMenuContent className="font-retro-mono text-[11px]">
-            <DropdownMenuItem onClick={onAnalyzeWithClaude}>🤖 Analyze with Claude</DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <a href="https://github.com/juliettech13/personal-analytics" target="_blank" rel="noreferrer">
                 ↗ View source

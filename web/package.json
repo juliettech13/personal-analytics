@@ -10,12 +10,12 @@
     "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
     "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
     "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
-    "backfill": "dotenv -e .env.local -- tsx scripts/backfill.ts",
-    "update-newsletter": "dotenv -e .env.local -- tsx scripts/update-newsletter.ts"
+    "backfill": "dotenv -e .env.local -- tsx scripts/backfill.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.6.1",
+    "ai": "^6.0.0",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -26,6 +26,7 @@
     "radix-ui": "^1.6.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
     "shadcn": "^4.13.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",

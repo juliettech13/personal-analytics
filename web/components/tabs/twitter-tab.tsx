@@ -13,6 +13,13 @@ function fmt(n: number): string {
 function pct(n: number): string {
   return `${n.toFixed(1)}%`;
 }
+// Tweet text is emoji-heavy; a plain .slice(0, n) can split a surrogate pair
+// in half, which serializes differently between server and client and shows
+// up as a real hydration mismatch (seen on Instagram captions -- same fix).
+function truncate(str: string, maxLen: number): string {
+  const chars = Array.from(str);
+  return chars.length > maxLen ? chars.slice(0, maxLen).join("") + "…" : str;
+}
 
 export interface TwitterPostRow {
   url: string;
@@ -50,7 +57,7 @@ export function TwitterTab({ posts }: { posts: TwitterPostRow[] }) {
   }, [posts]);
 
   const columns: Column<TwitterPostRow>[] = [
-    { key: "text", label: "Tweet", render: (p) => <span className="max-w-[220px] overflow-hidden text-ellipsis text-[9px] text-neutral-500">{(p.text ?? "").slice(0, 70)}</span> },
+    { key: "text", label: "Tweet", render: (p) => <span className="max-w-[220px] overflow-hidden text-ellipsis text-[9px] text-neutral-500">{truncate(p.text ?? "", 70)}</span> },
     { key: "date", label: "Date", render: (p) => (p.postedAt ?? "").slice(0, 10), sortValue: (p) => p.postedAt ?? "" },
     { key: "impressions", label: "Impressions", align: "right", render: (p) => fmt(p.impressions ?? 0), sortValue: (p) => p.impressions ?? 0 },
     { key: "likes", label: "Likes", align: "right", render: (p) => fmt(p.likes ?? 0), sortValue: (p) => p.likes ?? 0 },

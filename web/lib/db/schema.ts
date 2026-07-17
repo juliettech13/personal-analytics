@@ -198,14 +198,33 @@ export const newsletterSnapshots = pgTable("newsletter_snapshots", {
   extra: jsonb("extra").notNull().default({}), // acquisition-source breakdown lives here
 });
 
-export const newsletterIssues = pgTable("newsletter_issues", {
+// Keyed by Beehiiv's own post id (stable, from the real API) rather than
+// issue_date -- a hand-typed placeholder dataset never had two issues on the
+// same day, but that's not a real invariant to rely on.
+export const newsletterIssues = pgTable(
+  "newsletter_issues",
+  {
+    id: text("id").primaryKey(), // Beehiiv post id
+    issueDate: date("issue_date").notNull(),
+    subject: text("subject"),
+    recipients: integer("recipients"),
+    openRate: numeric("open_rate", { precision: 5, scale: 2 }),
+    clickRate: numeric("click_rate", { precision: 5, scale: 2 }),
+    extra: jsonb("extra").notNull().default({}),
+  },
+  (t) => [index("idx_newsletter_issues_date").on(t.issueDate.desc())],
+);
+
+// Append-only, same shape as sync_runs -- each Refresh generates one new row
+// (not an overwrite), so there's a free history of past recommendations and
+// a normal page load just reads the latest one instead of calling the model.
+export const aiRecommendations = pgTable("ai_recommendations", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
-  issueDate: date("issue_date").notNull().unique(),
-  subject: text("subject"),
-  recipients: integer("recipients"),
-  openRate: numeric("open_rate", { precision: 5, scale: 2 }),
-  clickRate: numeric("click_rate", { precision: 5, scale: 2 }),
-  extra: jsonb("extra").notNull().default({}),
+  generatedAt: timestamp("generated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  model: text("model").notNull(),
+  content: text("content").notNull(),
 });
 
 // Cheap, worth it: audit trail for the upload endpoint (no password to brute-force

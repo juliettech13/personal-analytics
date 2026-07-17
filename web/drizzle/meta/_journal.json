@@ -15,6 +15,13 @@
       "when": 1784079062016,
       "tag": "0001_acoustic_stone_men",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784233456254,
+      "tag": "0002_repoint_newsletter_issues_add_recommendations",
+      "breakpoints": true
     }
   ]
 }

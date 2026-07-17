@@ -58,6 +58,12 @@ export interface EnrichedStory {
   exits: number;
 }
 
+export interface AccountHistoryPoint {
+  fetchedAt: Date;
+  followers: number;
+  avgLikes: number;
+}
+
 export async function getLatestAccountObservation() {
   const db = getDb();
   const rows = await db
@@ -68,17 +74,27 @@ export async function getLatestAccountObservation() {
   return rows[0] ?? null;
 }
 
-export async function getAccountHistory(limit = 500) {
+/** instagram_post_observations.fetchedAt matches instagram_account_observations.fetchedAt
+ * exactly for rows written in the same sync run (route.ts stamps the whole batch with one
+ * snapshot.fetchedAt) -- so an equi-join reconstructs "avg likes across all posts at the time
+ * of this account snapshot" for free, no extra column needed. */
+export async function getAccountHistory(limit = 500): Promise<AccountHistoryPoint[]> {
   const db = getDb();
   const rows = await db
     .select({
       fetchedAt: instagramAccountObservations.fetchedAt,
       followers: instagramAccountObservations.followers,
+      avgLikes: sql<string>`coalesce(avg(${instagramPostObservations.likes}), 0)`,
     })
     .from(instagramAccountObservations)
+    .leftJoin(
+      instagramPostObservations,
+      eq(instagramPostObservations.fetchedAt, instagramAccountObservations.fetchedAt),
+    )
+    .groupBy(instagramAccountObservations.fetchedAt, instagramAccountObservations.followers)
     .orderBy(desc(instagramAccountObservations.fetchedAt))
     .limit(limit);
-  return rows.reverse(); // chronological order for charting
+  return rows.map((r) => ({ ...r, avgLikes: Number(r.avgLikes) })).reverse(); // chronological order for charting
 }
 
 /** Each post's most recent observation, joined onto its dimension row --
@@ -219,6 +235,53 @@ export async function getStoriesHistory(limit = 50): Promise<EnrichedStory[]> {
                OR ${instagramStoryObservations.impressions} > 0
                OR ${instagramStories.mediaUrl} IS NOT NULL
                OR ${instagramStories.thumbnailUrl} IS NOT NULL)`,
+    )
+    .orderBy(desc(instagramStories.postedAt))
+    .limit(limit);
+
+  return rows as EnrichedStory[];
+}
+
+/** Every story ever logged (active + expired), latest observation each -- the
+ * source for the unified Stories Analytics KPIs/chart/table, which (unlike
+ * getActiveStoriesWithLatestMetrics/getStoriesHistory) doesn't split on
+ * 24h-expiry or exclude zero-metric rows: the old dashboard's "Stories Logged"
+ * count is a raw count of everything ever logged, zeros included -- Stories
+ * Insights on this account has in practice always reported 0s, and that's a
+ * real (if uninteresting) fact worth showing as-is rather than hiding. */
+export async function getAllStoriesWithLatestMetrics(limit = 500): Promise<EnrichedStory[]> {
+  const db = getDb();
+
+  const latestPerStory = db
+    .select({
+      storyId: instagramStoryObservations.storyId,
+      maxFetchedAt: sql<string>`max(${instagramStoryObservations.fetchedAt})`.as("max_fetched_at"),
+    })
+    .from(instagramStoryObservations)
+    .groupBy(instagramStoryObservations.storyId)
+    .as("latest_per_story_all");
+
+  const rows = await db
+    .select({
+      id: instagramStories.id,
+      postedAt: instagramStories.postedAt,
+      mediaType: instagramStories.mediaType,
+      caption: instagramStories.caption,
+      permalink: instagramStories.permalink,
+      mediaUrl: instagramStories.mediaUrl,
+      thumbnailUrl: instagramStories.thumbnailUrl,
+      impressions: instagramStoryObservations.impressions,
+      reach: instagramStoryObservations.reach,
+      replies: instagramStoryObservations.replies,
+      tapsForward: instagramStoryObservations.tapsForward,
+      tapsBack: instagramStoryObservations.tapsBack,
+      exits: instagramStoryObservations.exits,
+    })
+    .from(instagramStories)
+    .innerJoin(latestPerStory, eq(instagramStories.id, latestPerStory.storyId))
+    .innerJoin(
+      instagramStoryObservations,
+      sql`${instagramStoryObservations.storyId} = ${latestPerStory.storyId} AND ${instagramStoryObservations.fetchedAt} = ${latestPerStory.maxFetchedAt}`,
     )
     .orderBy(desc(instagramStories.postedAt))
     .limit(limit);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { refreshAllData } from "@/lib/refresh-client";
 
 const TABS = [
   { key: "ig", label: "📸 Instagram" },
@@ -25,10 +26,9 @@ export function Dock({
   async function handleRefresh() {
     setSyncing(true);
     try {
-      const res = await fetch("/api/cron/instagram", { method: "POST" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        toast.error(`Sync error: ${body.error ?? res.status}`);
+      const result = await refreshAllData();
+      if (!result.ok) {
+        toast.error(result.error ?? "Sync error");
         setSyncing(false);
         return;
       }

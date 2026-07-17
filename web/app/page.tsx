@@ -3,11 +3,12 @@ import {
   getAccountHistory,
   getPostsWithLatestMetrics,
   getActiveStoriesWithLatestMetrics,
-  getStoriesHistory,
+  getAllStoriesWithLatestMetrics,
 } from "@/lib/db/queries/instagram";
 import { getLinkedInDailyEngagement, getLinkedInPosts } from "@/lib/db/queries/linkedin";
 import { getTwitterPosts } from "@/lib/db/queries/twitter";
 import { getNewsletterSnapshots, getNewsletterIssues } from "@/lib/db/queries/newsletter";
+import { getLatestRecommendation } from "@/lib/db/queries/recommendations";
 import { DashboardClient, type DashboardData } from "./dashboard-client";
 
 type LinkedInDailyExtra = { demographics?: Array<{ category: string; value: string; pct: string }> };
@@ -21,18 +22,19 @@ type NewsletterIssueExtra = { webViews?: number; unsubs?: number; url?: string }
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [account, history, posts, activeStories, storiesHistory, liDaily, liPosts, twPosts, nlSnapshots, nlIssues] =
+  const [account, history, posts, activeStories, allStories, liDaily, liPosts, twPosts, nlSnapshots, nlIssues, recommendation] =
     await Promise.all([
       getLatestAccountObservation(),
       getAccountHistory(),
       getPostsWithLatestMetrics(),
       getActiveStoriesWithLatestMetrics(),
-      getStoriesHistory(),
+      getAllStoriesWithLatestMetrics(),
       getLinkedInDailyEngagement(),
       getLinkedInPosts(),
       getTwitterPosts(),
       getNewsletterSnapshots(),
       getNewsletterIssues(),
+      getLatestRecommendation(),
     ]);
 
   const data: DashboardData = {
@@ -50,7 +52,7 @@ export default async function Home() {
       posts,
       history,
       activeStories,
-      storiesHistory,
+      allStories,
       username: "_juliettech",
     },
     newsletter: {
@@ -67,6 +69,9 @@ export default async function Home() {
         postedAt: p.postedAt ? p.postedAt.toISOString() : null,
       })),
     },
+    recommendation: recommendation
+      ? { generatedAt: recommendation.generatedAt.toISOString().replace("T", " ").slice(0, 16) + " UTC", content: recommendation.content }
+      : null,
     lastUpdatedText: account
       ? account.fetchedAt.toISOString().replace("T", " ").slice(0, 16) + " UTC"
       : "never",
