@@ -210,16 +210,18 @@ jobs:
               }
               ins = api_get(f'/{sid}/insights',
                             optional=True,
-                            metric='impressions,reach,replies,taps_forward,taps_back,exits')
+                            metric='views,reach,replies,taps_forward,taps_back,exits')
               if ins.get('data'):
                   for item in ins['data']:
-                      if item['name'] in story:
+                      # 'impressions' was deprecated in favor of 'views' (Graph API v22, Apr 2025)
+                      name = 'impressions' if item['name'] == 'views' else item['name']
+                      if name in story:
                           val = item.get('value')
                           if val is None:
                               val = (item.get('total_value') or {}).get('value')
                           if val is None:
                               val = ((item.get('values') or [{}])[-1].get('value', 0))
-                          story[item['name']] = val or 0
+                          story[name] = val or 0
               else:
                   print(f'    ⚠ story {sid}: no insights returned (any API error logged above)')
               active_stories.append(story)

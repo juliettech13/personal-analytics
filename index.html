@@ -1622,8 +1622,6 @@ function showUploadPrompt(platform) {
   const icon  = isLI ? '💼' : '𝕏';
   const name  = isLI ? 'LinkedIn' : 'Twitter / X';
   const color = isLI ? '#0A66C2' : '#1C1C1C';
-  const file  = isLI ? 'data/linkedin.csv' : 'data/twitter.csv';
-
   const steps = isLI ? `
     <li>Go to <strong>linkedin.com</strong> → your profile → <strong>Analytics</strong></li>
     <li>Click <strong>Post impressions</strong> → top-right <strong>Export</strong></li>
@@ -1651,13 +1649,18 @@ function showUploadPrompt(platform) {
           <div class="sh">How to export</div>
           <ol style="font-size:11px;color:#555;padding-left:18px;line-height:2;margin:6px 0 0">${steps}</ol>
         </div>
+        <div style="margin:0 auto 16px;max-width:400px;text-align:left">
+          <div style="font-family:var(--mono);font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px">Access password</div>
+          <input type="password" id="${platform}-password" placeholder="••••••••••••" autocomplete="current-password"
+            style="width:100%;box-sizing:border-box;font-family:var(--mono);font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:3px;background:var(--cream);color:var(--dark);outline:none;">
+        </div>
         <div id="${platform}-dropzone" class="dropzone">
           <div>⬛ DROP CSV or XLSX HERE</div>
           <div style="font-size:11px;color:#aaa;margin-top:6px;font-family:var(--mono)">or click to browse</div>
           <input type="file" id="${platform}-file-input" accept=".csv,.xlsx,.xls" style="display:none">
         </div>
         <div style="font-size:9px;color:#bbb;margin-top:14px;font-family:var(--mono)">
-          💾 Commit as <code>${file}</code> in your repo to persist across devices
+          🔒 Password-protected — saved to the repo on each import
         </div>
       </div>
     </div>
@@ -1762,10 +1765,15 @@ function readCSVFile(platform, file) {
   const finish = data => {
     const count = Array.isArray(data) ? data.length : (data.topByImpressions || []).length;
     if (!count && !data.totalImpressions) { showToast('⚠ No data found — check the file format'); return; }
-    const label = Array.isArray(data) ? `${data.length} rows` : `${data.totalImpressions} impressions`;
-    showToast(`✓ Loaded ${label}`);
     if (platform === 'linkedin') { liData = data; liRendered = false; renderLinkedIn(data); }
     else                         { twData = data; twRendered = false; renderTwitter(data); }
+  };
+
+  const afterParse = data => {
+    const pw = (document.getElementById(`${platform}-password`)?.value || '').trim();
+    if (!pw) { showToast('⚠ Enter the access password first'); return; }
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch (_) {}
+    uploadToServer(platform, data, pw, finish);
   };
 
   if (isXLSX) {
@@ -1777,8 +1785,7 @@ function readCSVFile(platform, file) {
         const data = (platform === 'linkedin' && isLinkedInNative)
           ? parseLinkedInXLSX(wb)
           : xlsxToRows(wb);
-        try { localStorage.setItem(key, JSON.stringify(data)); } catch (_) {}
-        finish(data);
+        afterParse(data);
       } catch (err) {
         showToast('⚠ Could not parse XLSX — ' + err.message);
         console.error(err);
@@ -1787,12 +1794,26 @@ function readCSVFile(platform, file) {
     reader.readAsArrayBuffer(file);
   } else {
     const reader = new FileReader();
-    reader.onload = e => {
-      const rows = parseCSV(e.target.result);
-      try { localStorage.setItem(key, e.target.result); } catch (_) {}
-      finish(rows);
-    };
+    reader.onload = e => { afterParse(parseCSV(e.target.result)); };
     reader.readAsText(file);
+  }
+}
+
+async function uploadToServer(platform, data, password, onSuccess) {
+  showToast('⏳ Saving…');
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, platform, data }),
+    });
+    if (res.status === 403) { showToast('⚠ Wrong password'); return; }
+    if (!res.ok) { showToast('⚠ Save failed — try again'); return; }
+    const result = await res.json();
+    showToast(`✓ Saved — ${result.total} records stored`);
+    onSuccess(data);
+  } catch (_) {
+    showToast('⚠ Could not reach server');
   }
 }
 
@@ -2259,7 +2280,22 @@ async function tryLoadCSV(platform) {
   const key  = platform === 'linkedin' ? 'nerd_li_csv' : 'nerd_tw_csv';
   const path = `/data/${platform}.csv`;
 
-  // 1. Try repo-committed file
+  // 0. Try server-stored JSON (written by /api/upload — most authoritative)
+  try {
+    const r = await fetch(`/data/${platform}.json?_=` + Date.now());
+    if (r.ok) {
+      const data = await r.json();
+      const hasData = Array.isArray(data) ? data.length > 0
+                    : (data && (data.totalImpressions > 0 || data.dailyEngagement?.length));
+      if (hasData) {
+        if (platform === 'linkedin') liData = data;
+        else                         twData = data;
+        return;
+      }
+    }
+  } catch (_) {}
+
+  // 1. Try repo-committed CSV file (legacy / manual commit)
   try {
     const r = await fetch(path + '?_=' + Date.now());
     if (r.ok) {
