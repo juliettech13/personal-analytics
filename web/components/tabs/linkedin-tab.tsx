@@ -97,6 +97,10 @@ export function LinkedInTab({
 
   return (
     <div>
+      <div className="mb-3 text-right">
+        <UploadDialog platform="linkedin" />
+      </div>
+
       <Window label="💼 LinkedIn Analytics" bodyClassName="p-2.5">
         <KpiRow>
           <Kpi label="Total Impressions" value={fmt(totals.totalImpr)} />
@@ -167,10 +171,6 @@ export function LinkedInTab({
           <SortableTable columns={columns} rows={posts} rowKey={(p) => p.url} defaultSortKey="impressions" />
         </div>
       </Window>
-
-      <div className="mb-2 text-right">
-        <UploadDialog platform="linkedin" />
-      </div>
     </div>
   );
 }

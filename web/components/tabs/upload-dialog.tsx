@@ -103,7 +103,7 @@ export function UploadDialog({ platform }: { platform: "linkedin" | "twitter" })
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="font-retro-mono text-[10px]">
+        <Button size="sm" className="border-chrome-dark bg-chrome-dark font-retro-mono text-[10px] text-retro-gold hover:bg-black">
           ⬆ Upload new export
         </Button>
       </DialogTrigger>
