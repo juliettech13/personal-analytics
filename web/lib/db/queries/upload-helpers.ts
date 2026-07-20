@@ -19,8 +19,22 @@ export function toNumber(value: unknown): number {
 }
 
 export function toDateString(value: unknown): string | null {
-  const s = String(value ?? "").trim().slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  const s = String(value ?? "").trim();
+  if (!s) return null;
+
+  // Already ISO (e.g. from a generic CSV column already in this shape).
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  // LinkedIn's native XLSX export uses M/D/YYYY (e.g. "9/11/2025") -- parsed
+  // by hand rather than `new Date(s)` to avoid any local-timezone date-shift
+  // risk around midnight that ambiguous string parsing can introduce.
+  const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (us) {
+    return `${us[3]}-${us[1]!.padStart(2, "0")}-${us[2]!.padStart(2, "0")}`;
+  }
+
+  return null;
 }
 
 /** Generic CSV/XLSX exports from LinkedIn/Twitter don't always include a
