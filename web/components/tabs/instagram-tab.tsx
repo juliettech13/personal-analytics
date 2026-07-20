@@ -8,7 +8,10 @@ import { TypeBadge } from "@/components/retro/badge";
 import { ChartCanvas } from "@/components/retro/chart-canvas";
 import { SortableTable, type Column } from "@/components/retro/sortable-table";
 import { DateRangeFilter } from "@/components/retro/date-range-filter";
+import { TagBadges } from "@/components/retro/tag-badges";
 import { ALL_TIME_RANGE, inDateRange, type DateRange } from "@/lib/date-range";
+import { groupByTag } from "@/lib/tag-performance";
+import { getTagColor, getTagColors } from "@/lib/tag-colors";
 import {
   displayImageUrl,
   type AccountHistoryPoint,
@@ -140,6 +143,19 @@ export function InstagramTab({ account, posts, history, activeStories, allStorie
     };
   }, [rated]);
 
+  const postTagPerformance = useMemo(() => {
+    const groups = groupByTag(rated, (p) => p.tags);
+    return [...groups.entries()]
+      .map(([tag, posts]) => ({
+        tag,
+        count: posts.length,
+        avgReach: avg(posts, (p) => p.reach),
+        avgEngRate: avg(posts, (p) => p.engRate),
+        avgSaveRate: avg(posts, (p) => p.saveRate),
+      }))
+      .sort((a, b) => b.avgReach - a.avgReach);
+  }, [rated]);
+
   const insights = useMemo(() => {
     const pills: Array<{ variant: "good" | "warn" | "info" | "hot"; text: string }> = [];
     const reels = rated.filter((p) => p.productType === "REELS");
@@ -217,6 +233,19 @@ export function InstagramTab({ account, posts, history, activeStories, allStorie
   );
   const activeStoriesImpressions = useMemo(() => activeStories.reduce((s, x) => s + x.impressions, 0), [activeStories]);
 
+  const storyTagPerformance = useMemo(() => {
+    const groups = groupByTag(filteredAllStories, (s) => s.tags);
+    return [...groups.entries()]
+      .map(([tag, stories]) => ({
+        tag,
+        count: stories.length,
+        avgImp: avg(stories, (s) => s.impressions),
+        avgReach: avg(stories, (s) => s.reach),
+        avgExits: avg(stories, (s) => s.exits),
+      }))
+      .sort((a, b) => b.avgReach - a.avgReach);
+  }, [filteredAllStories]);
+
   const columns: Column<RatedPost>[] = [
     {
       key: "thumb",
@@ -234,6 +263,7 @@ export function InstagramTab({ account, posts, history, activeStories, allStorie
     { key: "date", label: "Date", render: (p) => dateStr(p.postedAt), sortValue: (p) => p.postedAt.getTime() },
     { key: "type", label: "Type", render: (p) => <TypeBadge type={p.productType || p.mediaType} />, sortValue: (p) => p.productType },
     { key: "caption", label: "Caption", render: (p) => <span className="max-w-[200px] overflow-hidden text-ellipsis text-[9px] text-neutral-500">{truncate(p.caption ?? "", 60)}</span> },
+    { key: "tags", label: "Tags", render: (p) => <TagBadges tags={p.tags} /> },
     { key: "reach", label: "Reach", align: "right", render: (p) => fmt(p.reach), sortValue: (p) => p.reach },
     { key: "likes", label: "Likes", align: "right", render: (p) => fmt(p.likes), sortValue: (p) => p.likes },
     { key: "comments", label: "Comm.", align: "right", render: (p) => fmt(p.comments), sortValue: (p) => p.comments },
@@ -267,6 +297,7 @@ export function InstagramTab({ account, posts, history, activeStories, allStorie
     { key: "tapsBack", label: "Taps Back", align: "right", render: (s) => fmt(s.tapsBack), sortValue: (s) => s.tapsBack },
     { key: "exits", label: "Exits", align: "right", render: (s) => fmt(s.exits), sortValue: (s) => s.exits },
     { key: "caption", label: "Caption", render: (s) => <span className="max-w-[200px] overflow-hidden text-ellipsis text-[9px] text-neutral-500">{truncate(s.caption ?? "", 60)}</span> },
+    { key: "tags", label: "Tags", render: (s) => <TagBadges tags={s.tags} /> },
   ];
 
   return (
@@ -555,6 +586,59 @@ export function InstagramTab({ account, posts, history, activeStories, allStorie
         </Window>
       </div>
 
+      {postTagPerformance.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Window label="🏷 Performance by Tag" className="md:col-span-2">
+            <table className="w-full border-collapse text-[11px]">
+              <thead>
+                <tr>
+                  <th className="p-1 text-left text-neutral-500">Tag</th>
+                  <th className="p-1 text-right text-neutral-500">Posts</th>
+                  <th className="p-1 text-right text-neutral-500">Avg Reach</th>
+                  <th className="p-1 text-right text-neutral-500">Avg Eng. Rate</th>
+                  <th className="p-1 text-right text-neutral-500">Avg Save Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {postTagPerformance.map((row) => (
+                  <tr key={row.tag}>
+                    <td className="border-t border-border p-1 text-left uppercase tracking-wide text-neutral-600">
+                      <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: getTagColor(row.tag) }} />
+                      {row.tag}
+                    </td>
+                    <td className="border-t border-border p-1 text-right">{row.count}</td>
+                    <td className="border-t border-border p-1 text-right font-pixel text-base text-retro-teal">{fmt(row.avgReach)}</td>
+                    <td className="border-t border-border p-1 text-right">{pct(row.avgEngRate)}</td>
+                    <td className="border-t border-border p-1 text-right">{pct(row.avgSaveRate)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Window>
+
+          <Window label="🥧 Content Mix by Tag">
+            <ChartCanvas
+              height={200}
+              config={{
+                type: "pie",
+                data: {
+                  labels: postTagPerformance.map((r) => r.tag),
+                  datasets: [
+                    {
+                      data: postTagPerformance.map((r) => r.count),
+                      backgroundColor: getTagColors(postTagPerformance.map((r) => r.tag)),
+                      borderWidth: 2,
+                      borderColor: "#F4EFE6",
+                    },
+                  ],
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { boxWidth: 8, font: { size: 9 } } } } },
+              }}
+            />
+          </Window>
+        </div>
+      )}
+
       <Window label={`🗂 Post Explorer · ${filteredPosts.length} posts`}>
         <div className="max-h-[300px] overflow-y-auto">
           <SortableTable columns={columns} rows={rated} rowKey={(p) => p.id} defaultSortKey="reach" />
@@ -649,6 +733,60 @@ export function InstagramTab({ account, posts, history, activeStories, allStorie
               }}
               height={180}
             />
+
+            {storyTagPerformance.length > 0 && (
+              <>
+                <div className="mt-3 mb-1.5 text-[9px] text-neutral-400">Performance by tag</div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <table className="w-full border-collapse text-[11px] md:col-span-2">
+                    <thead>
+                      <tr>
+                        <th className="p-1 text-left text-neutral-500">Tag</th>
+                        <th className="p-1 text-right text-neutral-500">Stories</th>
+                        <th className="p-1 text-right text-neutral-500">Avg Impressions</th>
+                        <th className="p-1 text-right text-neutral-500">Avg Reach</th>
+                        <th className="p-1 text-right text-neutral-500">Avg Exits</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {storyTagPerformance.map((row) => (
+                        <tr key={row.tag}>
+                          <td className="border-t border-border p-1 text-left uppercase tracking-wide text-neutral-600">
+                            <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: getTagColor(row.tag) }} />
+                            {row.tag}
+                          </td>
+                          <td className="border-t border-border p-1 text-right">{row.count}</td>
+                          <td className="border-t border-border p-1 text-right">{fmt(row.avgImp)}</td>
+                          <td className="border-t border-border p-1 text-right font-pixel text-base text-retro-teal">{fmt(row.avgReach)}</td>
+                          <td className="border-t border-border p-1 text-right">{fmt(row.avgExits)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div>
+                    <ChartCanvas
+                      height={200}
+                      config={{
+                        type: "pie",
+                        data: {
+                          labels: storyTagPerformance.map((r) => r.tag),
+                          datasets: [
+                            {
+                              data: storyTagPerformance.map((r) => r.count),
+                              backgroundColor: getTagColors(storyTagPerformance.map((r) => r.tag)),
+                              borderWidth: 2,
+                              borderColor: "#F4EFE6",
+                            },
+                          ],
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { boxWidth: 8, font: { size: 9 } } } } },
+                      }}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="mt-3 mb-1.5 text-[9px] text-neutral-400">Story history · newest first</div>
             <div className="max-h-[260px] overflow-y-auto">

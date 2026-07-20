@@ -27,6 +27,10 @@ export const instagramPosts = pgTable("instagram_posts", {
   mediaUrl: text("media_url"),
   thumbnailUrl: text("thumbnail_url"),
   isSharedToFeed: boolean("is_shared_to_feed").notNull().default(true),
+  // Content-category tags (e.g. "investors", "ai", "tech") -- assigned by
+  // lib/tagging/classify.ts, not user-entered. Empty until a tagging pass
+  // (backfill or the next sync) picks this row up.
+  tags: text("tags").array().notNull().default([]),
   firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -40,6 +44,7 @@ export const instagramStories = pgTable("instagram_stories", {
   permalink: text("permalink"),
   mediaUrl: text("media_url"),
   thumbnailUrl: text("thumbnail_url"),
+  tags: text("tags").array().notNull().default([]),
   firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -154,6 +159,7 @@ export const linkedinPosts = pgTable(
     impressions: integer("impressions"),
     engagements: integer("engagements"),
     clicks: integer("clicks"),
+    tags: text("tags").array().notNull().default([]),
     extra: jsonb("extra").notNull().default({}),
     lastUploadedAt: timestamp("last_uploaded_at", { withTimezone: true })
       .notNull()
@@ -176,6 +182,7 @@ export const twitterPosts = pgTable(
     likes: integer("likes"),
     retweets: integer("retweets"),
     replies: integer("replies"),
+    tags: text("tags").array().notNull().default([]),
     extra: jsonb("extra").notNull().default({}),
     lastUploadedAt: timestamp("last_uploaded_at", { withTimezone: true })
       .notNull()
@@ -210,6 +217,7 @@ export const newsletterIssues = pgTable(
     recipients: integer("recipients"),
     openRate: numeric("open_rate", { precision: 5, scale: 2 }),
     clickRate: numeric("click_rate", { precision: 5, scale: 2 }),
+    tags: text("tags").array().notNull().default([]),
     extra: jsonb("extra").notNull().default({}),
   },
   (t) => [index("idx_newsletter_issues_date").on(t.issueDate.desc())],

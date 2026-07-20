@@ -40,6 +40,7 @@ export interface EnrichedPost {
   follows: number;
   plays: number;
   avgWatchTimeMs: number;
+  tags: string[];
 }
 
 export interface EnrichedStory {
@@ -56,6 +57,7 @@ export interface EnrichedStory {
   tapsForward: number;
   tapsBack: number;
   exits: number;
+  tags: string[];
 }
 
 export interface AccountHistoryPoint {
@@ -131,6 +133,7 @@ export async function getPostsWithLatestMetrics(limit = 20): Promise<EnrichedPos
       follows: instagramPostObservations.follows,
       plays: instagramPostObservations.plays,
       avgWatchTimeMs: instagramPostObservations.avgWatchTimeMs,
+      tags: instagramPosts.tags,
     })
     .from(instagramPosts)
     .innerJoin(
@@ -169,6 +172,7 @@ export async function getActiveStoriesWithLatestMetrics(): Promise<EnrichedStory
       permalink: instagramStories.permalink,
       mediaUrl: instagramStories.mediaUrl,
       thumbnailUrl: instagramStories.thumbnailUrl,
+      tags: instagramStories.tags,
       impressions: instagramStoryObservations.impressions,
       reach: instagramStoryObservations.reach,
       replies: instagramStoryObservations.replies,
@@ -216,6 +220,7 @@ export async function getStoriesHistory(limit = 50): Promise<EnrichedStory[]> {
       permalink: instagramStories.permalink,
       mediaUrl: instagramStories.mediaUrl,
       thumbnailUrl: instagramStories.thumbnailUrl,
+      tags: instagramStories.tags,
       impressions: instagramStoryObservations.impressions,
       reach: instagramStoryObservations.reach,
       replies: instagramStoryObservations.replies,
@@ -270,6 +275,7 @@ export async function getAllStoriesWithLatestMetrics(limit = 500): Promise<Enric
       permalink: instagramStories.permalink,
       mediaUrl: instagramStories.mediaUrl,
       thumbnailUrl: instagramStories.thumbnailUrl,
+      tags: instagramStories.tags,
       impressions: instagramStoryObservations.impressions,
       reach: instagramStoryObservations.reach,
       replies: instagramStoryObservations.replies,
