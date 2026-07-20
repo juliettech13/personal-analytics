@@ -92,8 +92,18 @@ export function parseLinkedInXLSX(wb: XLSX.WorkBook): NativeLinkedInParsed {
     d.dailyEngagement.push({ date, impressions: n(row[1]), engagements: n(row[2]) });
   }
 
+  // "TOP POSTS" is two side-by-side tables (engagement-ranked in cols 0-2,
+  // impressions-ranked in cols 4-6) preceded by a note row and a blank row,
+  // then the real header ("Post URL", "Post Publish Date", ...). Detecting
+  // that header by content rather than assuming a fixed row offset avoids
+  // both under-skipping (which fed the literal header text in as a fake
+  // "post" -- url="Post URL", date="Post Publish Date") and being brittle
+  // if LinkedIn ever changes the number of note/blank rows before it.
   const postRows = sheetRows("TOP POSTS");
-  for (const row of postRows.slice(2)) {
+  const postsHeaderIdx = postRows.findIndex(
+    (row) => String(row[0]).includes("Post URL") || String(row[4]).includes("Post URL"),
+  );
+  for (const row of postsHeaderIdx >= 0 ? postRows.slice(postsHeaderIdx + 1) : []) {
     if (row[4]) d.topByImpressions.push({ url: String(row[4]).trim(), date: String(row[5]).trim(), impressions: n(row[6]) });
     if (row[0]) d.topByEngagements.push({ url: String(row[0]).trim(), date: String(row[1]).trim(), engagements: n(row[2]) });
   }

@@ -13,6 +13,33 @@ function fmt(n: number): string {
 function pct(n: number): string {
   return `${n.toFixed(1)}%`;
 }
+// LinkedIn reports very small demographic shares as the literal text "< 1%"
+// rather than a number -- Number("< 1%".replace("%","")) is NaN, so every
+// such entry silently became 0. When every entry in a category is "< 1%"
+// (e.g. Company, in a small-following account), the whole pie's total is 0
+// and Chart.js renders nothing at all. 0.5 is a reasonable stand-in for
+// "some small nonzero share" so the slice is at least visible.
+function parsePct(raw: string): number {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("<")) return 0.5;
+  return Number(trimmed.replace("%", "")) || 0;
+}
+// LinkedIn's export has no post-text column at all -- only the URL. Its own
+// URLs are self-titling though: /posts/{author}_{slugified-post-opening}-{ugcPost|share|activity}-{id}-{suffix}.
+// Deriving a readable snippet from that slug is the only local way to tell
+// posts apart without a new API integration.
+function extractPostSnippet(url: string): string {
+  const match = url.match(/\/posts\/([^/?]+)/);
+  if (!match) return "";
+  let slug = match[1]!;
+  const underscoreIdx = slug.indexOf("_");
+  if (underscoreIdx >= 0) slug = slug.slice(underscoreIdx + 1);
+  slug = slug.replace(/-(ugcPost|activity|share)-[\w-]+$/i, "");
+  const words = slug.split("-").filter(Boolean);
+  if (!words.length) return "";
+  const text = words.join(" ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 export interface LinkedInDailyRow {
   date: string;
@@ -65,8 +92,27 @@ export function LinkedInTab({
 
   const columns: Column<LinkedInPostRow>[] = [
     { key: "date", label: "Date", render: (p) => p.publishedAt ?? "—", sortValue: (p) => p.publishedAt ?? "" },
+    {
+      key: "post",
+      label: "Post",
+      render: (p) => (
+        <span className="max-w-[240px] overflow-hidden text-ellipsis text-[10px] text-neutral-600" title={extractPostSnippet(p.url)}>
+          {extractPostSnippet(p.url) || "—"}
+        </span>
+      ),
+    },
     { key: "impressions", label: "Impressions", align: "right", render: (p) => fmt(p.impressions ?? 0), sortValue: (p) => p.impressions ?? 0 },
-    { key: "engagements", label: "Engagements", align: "right", render: (p) => fmt(p.engagements ?? 0), sortValue: (p) => p.engagements ?? 0 },
+    {
+      key: "engagements",
+      label: "Engagements",
+      align: "right",
+      // null means "LinkedIn's export didn't include an engagement count
+      // for this post" (its top-by-engagement ranking can be empty for a
+      // given export), which is a different fact than "confirmed zero
+      // engagements" -- collapsing both to "0" would be actively misleading.
+      render: (p) => (p.engagements == null ? "—" : fmt(p.engagements)),
+      sortValue: (p) => p.engagements ?? -1,
+    },
     {
       key: "url",
       label: "Link",
@@ -97,6 +143,10 @@ export function LinkedInTab({
 
   return (
     <div>
+      <div className="mb-3 text-right">
+        <UploadDialog platform="linkedin" />
+      </div>
+
       <Window label="💼 LinkedIn Analytics" bodyClassName="p-2.5">
         <KpiRow>
           <Kpi label="Total Impressions" value={fmt(totals.totalImpr)} />
@@ -152,7 +202,7 @@ export function LinkedInTab({
                   type: "pie",
                   data: {
                     labels: items.map((i) => i.value),
-                    datasets: [{ data: items.map((i) => Number(i.pct.replace("%", "")) || 0) }],
+                    datasets: [{ data: items.map((i) => parsePct(i.pct)) }],
                   },
                   options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { boxWidth: 8, font: { size: 9 } } } } },
                 }}
@@ -167,10 +217,6 @@ export function LinkedInTab({
           <SortableTable columns={columns} rows={posts} rowKey={(p) => p.url} defaultSortKey="impressions" />
         </div>
       </Window>
-
-      <div className="mb-2 text-right">
-        <UploadDialog platform="linkedin" />
-      </div>
     </div>
   );
 }

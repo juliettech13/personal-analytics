@@ -107,7 +107,7 @@ export async function upsertLinkedInNative(data: NativeLinkedInData): Promise<nu
       })
       .onConflictDoUpdate({
         target: linkedinPosts.url,
-        set: { impressions: row.impressions, lastUploadedAt: new Date() },
+        set: { publishedAt: toDateString(row.date), impressions: row.impressions, lastUploadedAt: new Date() },
       });
     count++;
   }
@@ -122,7 +122,7 @@ export async function upsertLinkedInNative(data: NativeLinkedInData): Promise<nu
       })
       .onConflictDoUpdate({
         target: linkedinPosts.url,
-        set: { engagements: row.engagements, lastUploadedAt: new Date() },
+        set: { publishedAt: toDateString(row.date), engagements: row.engagements, lastUploadedAt: new Date() },
       });
     count++;
   }

@@ -81,6 +81,10 @@ export function TwitterTab({ posts }: { posts: TwitterPostRow[] }) {
 
   return (
     <div>
+      <div className="mb-3 text-right">
+        <UploadDialog platform="twitter" />
+      </div>
+
       <Window label={`𝕏 Twitter / X Analytics · ${posts.length} tweets`} bodyClassName="p-2.5">
         <KpiRow>
           <Kpi label="Total Impressions" value={fmt(totals.totalImpr)} />
@@ -120,10 +124,6 @@ export function TwitterTab({ posts }: { posts: TwitterPostRow[] }) {
           <SortableTable columns={columns} rows={posts} rowKey={(p) => p.url} defaultSortKey="impressions" />
         </div>
       </Window>
-
-      <div className="mb-2 text-right">
-        <UploadDialog platform="twitter" />
-      </div>
     </div>
   );
 }
