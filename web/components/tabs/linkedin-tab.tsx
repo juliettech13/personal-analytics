@@ -5,6 +5,10 @@ import { Window } from "@/components/retro/window";
 import { Kpi, KpiRow } from "@/components/retro/kpi";
 import { ChartCanvas } from "@/components/retro/chart-canvas";
 import { SortableTable, type Column } from "@/components/retro/sortable-table";
+import { TagBadges } from "@/components/retro/tag-badges";
+import { extractPostSnippet } from "@/lib/linkedin-post-text";
+import { groupByTag } from "@/lib/tag-performance";
+import { getTagColor, getTagColors } from "@/lib/tag-colors";
 import { UploadDialog } from "./upload-dialog";
 
 function fmt(n: number): string {
@@ -24,22 +28,6 @@ function parsePct(raw: string): number {
   if (trimmed.startsWith("<")) return 0.5;
   return Number(trimmed.replace("%", "")) || 0;
 }
-// LinkedIn's export has no post-text column at all -- only the URL. Its own
-// URLs are self-titling though: /posts/{author}_{slugified-post-opening}-{ugcPost|share|activity}-{id}-{suffix}.
-// Deriving a readable snippet from that slug is the only local way to tell
-// posts apart without a new API integration.
-function extractPostSnippet(url: string): string {
-  const match = url.match(/\/posts\/([^/?]+)/);
-  if (!match) return "";
-  let slug = match[1]!;
-  const underscoreIdx = slug.indexOf("_");
-  if (underscoreIdx >= 0) slug = slug.slice(underscoreIdx + 1);
-  slug = slug.replace(/-(ugcPost|activity|share)-[\w-]+$/i, "");
-  const words = slug.split("-").filter(Boolean);
-  if (!words.length) return "";
-  const text = words.join(" ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
 export interface LinkedInDailyRow {
   date: string;
@@ -52,6 +40,7 @@ export interface LinkedInPostRow {
   publishedAt: string | null;
   impressions: number | null;
   engagements: number | null;
+  tags: string[];
   extra: Record<string, unknown>;
 }
 
@@ -90,6 +79,24 @@ export function LinkedInTab({
     return Object.entries(byMonth).sort(([a], [b]) => a.localeCompare(b));
   }, [posts]);
 
+  const tagPerformance = useMemo(() => {
+    const groups = groupByTag(posts, (p) => p.tags);
+    return [...groups.entries()]
+      .map(([tag, group]) => ({
+        tag,
+        count: group.length,
+        avgImpressions: group.length ? group.reduce((s, p) => s + (p.impressions ?? 0), 0) / group.length : 0,
+        // null engagements ("no data for this post") shouldn't drag the
+        // average down as if they were confirmed zeros -- only average
+        // over posts that actually have a real engagement count.
+        avgEngagements: (() => {
+          const known = group.filter((p) => p.engagements != null);
+          return known.length ? known.reduce((s, p) => s + (p.engagements ?? 0), 0) / known.length : null;
+        })(),
+      }))
+      .sort((a, b) => b.avgImpressions - a.avgImpressions);
+  }, [posts]);
+
   const columns: Column<LinkedInPostRow>[] = [
     { key: "date", label: "Date", render: (p) => p.publishedAt ?? "—", sortValue: (p) => p.publishedAt ?? "" },
     {
@@ -101,6 +108,7 @@ export function LinkedInTab({
         </span>
       ),
     },
+    { key: "tags", label: "Tags", render: (p) => <TagBadges tags={p.tags} /> },
     { key: "impressions", label: "Impressions", align: "right", render: (p) => fmt(p.impressions ?? 0), sortValue: (p) => p.impressions ?? 0 },
     {
       key: "engagements",
@@ -209,6 +217,57 @@ export function LinkedInTab({
               />
             </Window>
           ))}
+        </div>
+      )}
+
+      {tagPerformance.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Window label="🏷 Performance by Tag" className="md:col-span-2">
+            <table className="w-full border-collapse text-[11px]">
+              <thead>
+                <tr>
+                  <th className="p-1 text-left text-neutral-500">Tag</th>
+                  <th className="p-1 text-right text-neutral-500">Posts</th>
+                  <th className="p-1 text-right text-neutral-500">Avg Impressions</th>
+                  <th className="p-1 text-right text-neutral-500">Avg Engagements</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tagPerformance.map((row) => (
+                  <tr key={row.tag}>
+                    <td className="border-t border-border p-1 text-left uppercase tracking-wide text-neutral-600">
+                      <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: getTagColor(row.tag) }} />
+                      {row.tag}
+                    </td>
+                    <td className="border-t border-border p-1 text-right">{row.count}</td>
+                    <td className="border-t border-border p-1 text-right font-pixel text-base text-retro-teal">{fmt(row.avgImpressions)}</td>
+                    <td className="border-t border-border p-1 text-right">{row.avgEngagements == null ? "—" : fmt(row.avgEngagements)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Window>
+
+          <Window label="🥧 Content Mix by Tag">
+            <ChartCanvas
+              height={200}
+              config={{
+                type: "pie",
+                data: {
+                  labels: tagPerformance.map((r) => r.tag),
+                  datasets: [
+                    {
+                      data: tagPerformance.map((r) => r.count),
+                      backgroundColor: getTagColors(tagPerformance.map((r) => r.tag)),
+                      borderWidth: 2,
+                      borderColor: "#F4EFE6",
+                    },
+                  ],
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { boxWidth: 8, font: { size: 9 } } } } },
+              }}
+            />
+          </Window>
         </div>
       )}
 

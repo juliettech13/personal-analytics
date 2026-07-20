@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { getDb } from "@/lib/db/client";
 import { fetchInstagramSnapshot } from "@/lib/instagram/sync";
+import { tagUntaggedContent } from "@/lib/tagging/tag-content";
 import { SESSION_COOKIE, isValidSessionCookie } from "@/lib/auth";
 import {
   instagramPosts,
@@ -173,6 +174,15 @@ async function runSync() {
       errorMessage: String(err),
     });
     return Response.json({ ok: false, error: String(err) }, { status: 500 });
+  }
+
+  // Best-effort: tag whatever's newly untagged now that the sync landed.
+  // A tagging failure shouldn't make an otherwise-successful sync report as
+  // failed -- untagged rows just get picked up by the next sync or backfill.
+  try {
+    await tagUntaggedContent();
+  } catch (err) {
+    console.warn(`  ⚠ (optional) post-sync tagging failed: ${err}`);
   }
 
   return Response.json({

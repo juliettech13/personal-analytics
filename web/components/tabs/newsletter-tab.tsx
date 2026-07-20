@@ -7,7 +7,10 @@ import { Pill, Pills } from "@/components/retro/pill";
 import { ChartCanvas } from "@/components/retro/chart-canvas";
 import { SortableTable, type Column } from "@/components/retro/sortable-table";
 import { DateRangeFilter } from "@/components/retro/date-range-filter";
+import { TagBadges } from "@/components/retro/tag-badges";
 import { ALL_TIME_RANGE, inDateRange, type DateRange } from "@/lib/date-range";
+import { groupByTag } from "@/lib/tag-performance";
+import { getTagColor, getTagColors } from "@/lib/tag-colors";
 
 const REEL_CLR = "#C84860";
 const FEED_CLR = "#3A6890";
@@ -59,6 +62,7 @@ export interface NewsletterIssueRow {
   recipients: number | null;
   openRate: string | null;
   clickRate: string | null;
+  tags: string[];
   extra: { webViews?: number; unsubs?: number; url?: string } & Record<string, unknown>;
 }
 
@@ -101,6 +105,18 @@ export function NewsletterTab({
 
   const sortedSources = useMemo(() => [...sources].sort((a, b) => b.count - a.count), [sources]);
   const sourcesTotal = useMemo(() => sources.reduce((s, x) => s + x.count, 0), [sources]);
+
+  const tagPerformance = useMemo(() => {
+    const groups = groupByTag(issuesDesc, (i) => i.tags);
+    return [...groups.entries()]
+      .map(([tag, issues]) => ({
+        tag,
+        count: issues.length,
+        avgOpen: issues.length ? issues.reduce((s, i) => s + Number(i.openRate ?? 0), 0) / issues.length : 0,
+        avgClick: issues.length ? issues.reduce((s, i) => s + Number(i.clickRate ?? 0), 0) / issues.length : 0,
+      }))
+      .sort((a, b) => b.avgOpen - a.avgOpen);
+  }, [issuesDesc]);
 
   const insights = useMemo(() => {
     const pills: Array<{ variant: "good" | "warn" | "info" | "hot"; text: string }> = [];
@@ -157,6 +173,7 @@ export function NewsletterTab({
         ),
     },
     { key: "date", label: "Date", render: (i) => i.issueDate, sortValue: (i) => i.issueDate },
+    { key: "tags", label: "Tags", render: (i) => <TagBadges tags={i.tags} /> },
     { key: "recipients", label: "Recipients", align: "right", render: (i) => fmt(i.recipients ?? 0), sortValue: (i) => i.recipients ?? 0 },
     { key: "openRate", label: "Open %", align: "right", render: (i) => pct(Number(i.openRate ?? 0)), sortValue: (i) => Number(i.openRate ?? 0) },
     {
@@ -382,6 +399,57 @@ export function NewsletterTab({
               ))}
             </Pills>
           </Window>
+
+          {tagPerformance.length > 0 && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <Window label="🏷 Performance by Tag" className="md:col-span-2">
+                <table className="w-full border-collapse text-[11px]">
+                  <thead>
+                    <tr>
+                      <th className="p-1 text-left text-neutral-500">Tag</th>
+                      <th className="p-1 text-right text-neutral-500">Issues</th>
+                      <th className="p-1 text-right text-neutral-500">Avg Open Rate</th>
+                      <th className="p-1 text-right text-neutral-500">Avg Click Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tagPerformance.map((row) => (
+                      <tr key={row.tag}>
+                        <td className="border-t border-border p-1 text-left uppercase tracking-wide text-neutral-600">
+                          <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: getTagColor(row.tag) }} />
+                          {row.tag}
+                        </td>
+                        <td className="border-t border-border p-1 text-right">{row.count}</td>
+                        <td className="border-t border-border p-1 text-right font-pixel text-base text-retro-teal">{pct(row.avgOpen)}</td>
+                        <td className="border-t border-border p-1 text-right">{pct(row.avgClick)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Window>
+
+              <Window label="🥧 Content Mix by Tag">
+                <ChartCanvas
+                  height={200}
+                  config={{
+                    type: "pie",
+                    data: {
+                      labels: tagPerformance.map((r) => r.tag),
+                      datasets: [
+                        {
+                          data: tagPerformance.map((r) => r.count),
+                          backgroundColor: getTagColors(tagPerformance.map((r) => r.tag)),
+                          borderWidth: 2,
+                          borderColor: "#F4EFE6",
+                        },
+                      ],
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { boxWidth: 8, font: { size: 9 } } } } },
+                  }}
+                />
+              </Window>
+            </div>
+          )}
 
           <Window label={`📋 Issue Explorer · ${filteredIssues.length} Issues`}>
             <div className="max-h-[300px] overflow-y-auto">
