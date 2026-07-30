@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Window } from "@/components/retro/window";
 import { RetroMarkdown } from "@/components/retro/markdown";
 import { Menubar } from "@/components/chrome/menubar";
+import { Hello } from "@/components/chrome/hello";
 import { Ticker } from "@/components/chrome/ticker";
 import { Dock, type TabKey } from "@/components/chrome/dock";
 import { InstagramTab, type InstagramTabProps } from "@/components/tabs/instagram-tab";
@@ -31,6 +32,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   return (
     <div className="min-h-screen px-3.5 pt-8 pb-20">
       <Menubar activeTab={activeTab} onTabChange={setActiveTab} lastUpdatedText={data.lastUpdatedText} />
+      <Hello />
       <Ticker
         text={`⬛ NERD_SPLASH ANALYTICS · @${data.instagram.username} · ${data.instagram.account?.followers ?? 0} FOLLOWERS · UPDATED ${data.lastUpdatedText} · ⬛`}
       />
